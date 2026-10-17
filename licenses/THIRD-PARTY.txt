@@ -1,0 +1,17 @@
+NI to SP uses a separate sp404.exe built from TuscanPL/SparkyMK2 v0.7.3.
+SparkyMK2 is GPL-3.0 licensed. See SparkyMK2-GPL-3.0.txt and the matching
+SparkyMK2-source.zip supplied with the application outputs.
+
+Python runtime libraries: CustomTkinter, darkdetect, mido, numpy, scipy,
+sounddevice/PortAudio, soundfile/libsndfile, cffi, pycparser and Pillow.
+Live MIDI input also uses python-rtmidi/RtMidi; see python-rtmidi-LICENSE.md.
+Their licence notices are included in this directory. Standard Tcl/Tk/Python
+runtime notices are also retained by the application bundler.
+
+The USB adapter and compact output-device selection were carried over from
+the local CrateBuilder project developed in the same user workspace.
+No Native Instruments plug-in, kit, sample or preview audio is distributed.
+The default sample converter does not run or record the Maschine application.
+Drag-and-drop uses tkinterdnd2/TkDND; see tkinterdnd2.txt and bundled runtime notices.
+MPC1000 program export adapts the user's CrateBuilder writer and Stephen Norum's
+unmodified default template. See pympc1000.txt.

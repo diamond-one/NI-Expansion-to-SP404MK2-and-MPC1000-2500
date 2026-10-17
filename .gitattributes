@@ -1,0 +1,7 @@
+* text=auto
+*.py text eol=lf
+*.md text eol=lf
+*.ttf binary
+*.PGM binary
+*.exe binary
+*.zip binary
