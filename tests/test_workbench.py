@@ -93,24 +93,26 @@ class WorkbenchTests(unittest.TestCase):
                 self.assertGreaterEqual(action.winfo_width(), 150)
 
     def test_connections_dialog_retains_the_mpc_mapping_and_channel_choices(self):
-        with patch('ni_to_sp.converter_ui.simple_audio_outputs', return_value=[]), \
-             patch('ni_to_sp.converter_ui.list_input_ports', return_value=['MPC interface']):
-            self.app.audio_settings()
-            wait(self.app)
-        window = next(w for w in self.app.winfo_children() if isinstance(w, ctk.CTkToplevel))
-        def descendants(widget):
-            for child in widget.winfo_children():
-                yield child
-                yield from descendants(child)
-        choices = [w for w in descendants(window) if isinstance(w, ctk.CTkOptionMenu)]
-        self.assertEqual(len(choices), 4)
-        choices[1].set('MPC interface')
-        choices[2].set('MPC1000 / JJOS3 · program pads')
-        choices[3].set('16')
-        save = next(w for w in descendants(window) if isinstance(w, ctk.CTkButton) and w.cget('text') == 'Save connections')
-        self.app.update()
-        self.assertLessEqual(save.winfo_rooty() + save.winfo_height(), window.winfo_rooty() + window.winfo_height())
-        save.invoke()
-        self.assertEqual(self.app.connection_settings['profile'], 'mpc1000')
-        self.assertEqual(self.app.connection_settings['channel'], 16)
-        self.assertEqual(self.app.connection_settings['midiInputName'], 'MPC interface')
+        for label, profile in [('MPC1000 / JJOS3 · program pads', 'mpc1000'),
+                               ('MPC1000 / JJOS3 · MIDI track', 'mpc_midi')]:
+            with patch('ni_to_sp.converter_ui.simple_audio_outputs', return_value=[]), \
+                 patch('ni_to_sp.converter_ui.list_input_ports', return_value=['MPC interface']):
+                self.app.audio_settings()
+                wait(self.app)
+            window = next(w for w in self.app.winfo_children() if isinstance(w, ctk.CTkToplevel))
+            def descendants(widget):
+                for child in widget.winfo_children():
+                    yield child
+                    yield from descendants(child)
+            choices = [w for w in descendants(window) if isinstance(w, ctk.CTkOptionMenu)]
+            self.assertEqual(len(choices), 4)
+            choices[1].set('MPC interface')
+            choices[2].set(label)
+            choices[3].set('16')
+            save = next(w for w in descendants(window) if isinstance(w, ctk.CTkButton) and w.cget('text') == 'Save connections')
+            self.app.update()
+            self.assertLessEqual(save.winfo_rooty() + save.winfo_height(), window.winfo_rooty() + window.winfo_height())
+            save.invoke()
+            self.assertEqual(self.app.connection_settings['profile'], profile)
+            self.assertEqual(self.app.connection_settings['channel'], 16)
+            self.assertEqual(self.app.connection_settings['midiInputName'], 'MPC interface')

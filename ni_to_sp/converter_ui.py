@@ -16,6 +16,7 @@ from .audio import simple_audio_outputs, audio_output_label
 from .mpc1000 import export_program
 
 PROFILE_LABELS = {'SP-404 Mode A': 'sp404_a', 'SP-404 Mode B': 'sp404_b',
+    'MPC1000 / JJOS3 · MIDI track': 'mpc_midi',
     'MPC1000 / JJOS3 · program pads': 'mpc1000',
     'MPC / controller · notes 36–51': 'linear', 'Custom · learned pads only': 'custom'}
 
@@ -329,7 +330,7 @@ class LegacyApp(BrowserApp):
         elif event.get('type') == 'unmapped':
             self.set_status(f"MIDI channel {event['channel']}, note {event['note']} received. " +
                 ('Load the MPC program note map in Connections, or use MIDI Learn.'
-                 if self.connection_settings.get('profile') == 'mpc1000'
+                 if self.connection_settings.get('profile') in {'mpc1000', 'mpc_midi'}
                  else 'For an MPC, choose MPC1000 / JJOS3 in Connections.'))
 
     def audio_settings(self):
@@ -401,11 +402,14 @@ class LegacyApp(BrowserApp):
             reset.pack(side='left', padx=10)
             def show_note_map(*_):
                 mpc = PROFILE_LABELS[profile.get()] == 'mpc1000'
-                note_label.configure(text=f'Pad notes: {pending_name}' if mpc else 'MPC program mapping is available with the MPC1000 profile.', text_color=T.MUTED)
+                midi_track = PROFILE_LABELS[profile.get()] == 'mpc_midi'
+                note_label.configure(text=f'Pad notes: {pending_name}' if mpc else
+                    'Pad notes: MIDI track · 36–99 across banks A–D' if midi_track else
+                    'MPC program mapping is available with the MPC1000 profile.', text_color=T.MUTED)
                 reset.configure(state='normal' if mpc else 'disabled')
             profile.trace_add('write', show_note_map)
             show_note_map()
-            T.label(form, 'SP: USB with PAD Note Out enabled.\nMPC: MIDI OUT → interface IN. All four hardware banks play the visible kit bank.\nUse a MIDI track with its output assigned. JJ mpc-ctl button input is a separate function.',
+            T.label(form, 'SP: USB with PAD Note Out enabled.\nMPC: MIDI OUT → interface IN. Set the track output to 1A for MIDI OUT A.\nChoose MIDI track for chromatic notes, or program pads for a drum program map.\nAll four hardware banks play the visible kit bank.',
                 13, T.MUTED, wraplength=600, justify='left').pack(anchor='w', padx=24, pady=(2, 12))
             def save():
                 self.disable_live_preview(quiet=True)

@@ -1,6 +1,6 @@
-# NI to SP & MPC 0.12 — four-bank kit workshop
+# NI to SP & MPC 0.13 — four-bank kit workshop
 
-[Download the latest Windows package](https://github.com/diamond-one/NI-Expansion-to-SP404MK2-and-MPC1000-2500/releases/latest), extract it, and open NI-to-SP-0.12.exe. Python and Maschine do not need to be running. Build an MPC1000 program with banks A–D, audition sounds and export it, or send the current 16-pad bank to the SP-404MKII. This is a sample converter; no recording is required.
+[Download the latest Windows package](https://github.com/diamond-one/NI-Expansion-to-SP404MK2-and-MPC1000-2500/releases/latest), extract it, and open NI-to-SP-0.13.exe. Python and Maschine do not need to be running. Build an MPC1000 program with banks A–D, audition sounds and export it, or send the current 16-pad bank to the SP-404MKII. This is a sample converter; no recording is required.
 
 ![Kit workshop showing a loaded NI kit, MPC banks A–D, pad audition and replacement controls](docs/screenshots/main-workspace.png)
 
@@ -156,16 +156,16 @@ python -m pip install -r requirements.txt
 python run.py
 ```
 
-Build the standalone Windows executable with `./build.ps1`; the result is in `dist`. Run regression tests with `python -m unittest discover -s tests -v`. Tests create their own temporary audio; they do not import samples to physical hardware. For the generated-fixture packaged runtime check, use `NI-to-SP-0.12.exe --self-check report.json`.
+Build the standalone Windows executable with `./build.ps1`; the result is in `dist`. Run regression tests with `python -m unittest discover -s tests -v`. Tests create their own temporary audio; they do not import samples to physical hardware. For the generated-fixture packaged runtime check, use `NI-to-SP-0.13.exe --self-check report.json`.
 
 `tools/sp404.exe` is the bundled SparkyMK2 USB helper. Its matching source is in [the matching helper source release asset](https://github.com/diamond-one/NI-Expansion-to-SP404MK2-and-MPC1000-2500/releases/download/v0.11.0/SparkyMK2-source.zip); license notices are in `licenses`. The app font is loaded privately for the process. No NI expansion content, personal settings, scan databases or audio files are stored in this repository.
 
 ### MPC controller setup
 
 1. Connect MPC MIDI OUT A or B to the USB MIDI interface IN connected to this computer.
-2. On the MPC main screen, select a MIDI track and assign its output port/channel to that cable. A stopped sequencer is sufficient for pad audition.
-3. In Connections, select MPC1000 / JJOS3 · program pads and the interface input (for example USB Midi 1). Use channel Any initially. Auto detect can use one unambiguous MPC or USB MIDI input; it never guesses between several candidates.
+2. On the MPC main screen, select a MIDI track and assign its output port/channel to that cable (for example 1A for channel 1 on MIDI OUT A). OFF sends no pad notes to that port. A stopped sequencer is sufficient for pad audition.
+3. In Connections, select MPC1000 / JJOS3 · MIDI track and the interface input (for example USB Midi 1). Use channel Any initially. Auto detect can use one unambiguous MPC or USB MIDI input; it never guesses between several candidates.
 4. Select a kit, turn MIDI preview on, and tap pads. Every MPC hardware bank plays the visible software bank. Use the app's A–D controls to choose another bank for editing/export. Velocity is preserved.
-5. For a custom note layout, load the PGM currently assigned on the MPC in Connections, then save. This reads pad-note metadata only. MIDI Learn remains available when that program format is unsupported.
+5. MIDI track uses chromatic notes 36–99 across A–D (bank starts 36, 52, 68 and 84). For a drum program, choose MPC1000 / JJOS3 · program pads instead. For a custom program note layout, load the PGM currently assigned on the MPC in Connections, then save. This reads pad-note metadata only. MIDI Learn remains available when that program format is unsupported.
 
 JJ's `mpc-ctl` preset assigns **incoming** notes/CCs so a computer can operate the MPC. Those assignments are not a map of the physical pads' outgoing notes. This app opens MIDI inputs only; it does not send JJ bank/transport commands back to the hardware. See [JJ's controller documentation](https://www7a.biglobe.ne.jp/~mpc1000/mpc-ctl/index.htm) and [button input assignments](https://www7a.biglobe.ne.jp/~mpc1000/128xl/button_light.htm).

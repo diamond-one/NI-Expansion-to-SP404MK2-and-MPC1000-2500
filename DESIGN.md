@@ -1,4 +1,4 @@
-# Kit workshop 0.12 design
+# Kit workshop 0.13 design
 
 Native Windows / Python CustomTkinter. Operate mode. The user explicitly selected Neo-Brutalism; this replaces the former charcoal/gold world.
 
@@ -33,3 +33,5 @@ The transfer window uses the same paper/ink/yellow/cobalt world and bundled typo
 Opening the window reads the device; it never writes audio. One SP needs no USB selection. Multiple SPs require an explicit choice. Current bank comes from a validated status response (project/bank/pad), not note guesses or the software's MPC bank. Unknown bank requires user selection. Manual bank overrides survive refresh; changing the bank resets replacement consent. Automatic backups remain mandatory for replacement. The final named Send action accepts the reviewed immutable plan; backend identity, occupied-pad snapshot and bank-protection checks remain enforced.
 
 MPC pad input accepts the 64 program-note assignments across hardware banks A–D and folds each into its physical position in the visible bank. Software bank selection remains an editing choice; hardware-bank mismatch never filters otherwise valid pad hits. Custom program note maps are imported as metadata, validated before replacing preferences, and remain independent of exported PGM mappings. JJ controller input assignments are not used as outgoing-pad mappings.
+
+MPC input offers separate MIDI track (chromatic notes 36–99) and drum program profiles. Both fold hardware banks onto the visible sixteen pads. Program imports affect only the drum program profile; choosing MIDI track preserves imported maps for later use. Profile selection is explicit because their note ranges overlap.

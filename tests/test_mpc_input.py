@@ -9,6 +9,25 @@ from test_live_midi import message
 
 
 class MPCInputTests(unittest.TestCase):
+    def test_midi_track_chromatic_banks_and_observed_bank_start_notes(self):
+        hits = []
+        controller = MIDIController('fixture', lambda pad, velocity: hits.append((pad, velocity)),
+                                    profile='mpc_midi')
+        controller._active = True
+        for note in (36, 52, 84):
+            controller._receive(message(note=note, velocity=127), controller._generation)
+        self.assertEqual(hits, [(0, 127)] * 3)
+        for bank in range(4):
+            controller.set_mpc_bank(bank)
+            hits.clear()
+            for note in range(36, 100):
+                controller._receive(message(note=note, velocity=note), controller._generation)
+            self.assertEqual(hits, [((note-36) % 16, note) for note in range(36, 100)])
+        for note in (35, 100):
+            controller._receive(message(note=note), controller._generation)
+        controller._receive(message(note=36, velocity=0), controller._generation)
+        self.assertEqual(len(hits), 64)
+
     def controller(self, **kwargs):
         self.hits = []
         controller = MIDIController('fixture', lambda i, v: self.hits.append((i, v)),

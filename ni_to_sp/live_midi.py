@@ -30,7 +30,8 @@ DEFAULT_SETTINGS = {
     "cliPath": "",
     "port": "",
 }
-PROFILES = frozenset({"sp404_a", "sp404_b", "linear", "custom", "mpc1000"})
+PROFILES = frozenset({"sp404_a", "sp404_b", "linear", "custom", "mpc1000", "mpc_midi"})
+MPC_MIDI_NOTES = tuple(range(36, 100))
 MPC_A_NOTES = (37, 36, 42, 82, 40, 38, 46, 44, 48, 47, 45, 43, 49, 55, 51, 53)
 MPC_PAD_NOTES = MPC_A_NOTES + (
     54, 69, 81, 80, 65, 66, 76, 77, 56, 62, 63, 64, 73, 74, 71, 39,
@@ -362,9 +363,11 @@ class MIDIController:
                 else:
                     pad = self._mapping.get(f"{channel}:{note}", self._mapping.get(f"*:{note}"))
                     if pad is None and self.profile != "custom":
-                        default_pad = (self._mpc_notes.index(note - self.note_offset) % 16
-                            if self.profile == "mpc1000" and note - self.note_offset in self._mpc_notes
-                            else -1 if self.profile == "mpc1000" else note - 36 - self.note_offset)
+                        if self.profile in {'mpc1000', 'mpc_midi'}:
+                            notes = MPC_MIDI_NOTES if self.profile == 'mpc_midi' else self._mpc_notes
+                            default_pad = notes.index(note - self.note_offset) % 16 if note - self.note_offset in notes else -1
+                        else:
+                            default_pad = note - 36 - self.note_offset
                         if 0 <= default_pad <= 15:
                             pad = default_pad
                     event = {"type": "note" if pad is not None else "unmapped", "pad": pad,

@@ -191,7 +191,7 @@ class LivePreviewMixin:
                 if not audio_only and input_name and input_name not in inputs:
                     raise ValueError("The saved MIDI input is unavailable. Reconnect it or choose another input in Settings.")
                 if not audio_only and not input_name:
-                    if settings.get('profile') == 'mpc1000':
+                    if settings.get('profile') in {'mpc1000', 'mpc_midi'}:
                         candidates = [name for name in inputs if 'mpc' in name.casefold()]
                         if not candidates:
                             candidates = [name for name in inputs if 'usb midi' in name.casefold()]
