@@ -32,6 +32,21 @@ DEFAULT_SETTINGS = {
 }
 PROFILES = frozenset({"sp404_a", "sp404_b", "linear", "custom", "mpc1000"})
 MPC_A_NOTES = (37, 36, 42, 82, 40, 38, 46, 44, 48, 47, 45, 43, 49, 55, 51, 53)
+MPC_PAD_NOTES = MPC_A_NOTES + (
+    54, 69, 81, 80, 65, 66, 76, 77, 56, 62, 63, 64, 73, 74, 71, 39,
+    52, 57, 58, 59, 60, 61, 67, 68, 70, 72, 75, 78, 79, 35, 41, 50,
+    83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98)
+
+
+def normalise_mpc_notes(notes):
+    if notes is None:
+        return list(MPC_PAD_NOTES)
+    if not isinstance(notes, (list, tuple)) or len(notes) != 64:
+        raise ValueError('MPC program mapping must contain 64 pad notes.')
+    result = [_integer(note, 'MPC pad note', 0, 127) for note in notes]
+    if len(set(result)) != 64:
+        raise ValueError('MPC pad notes must be unique.')
+    return result
 
 
 def _integer(value, name, minimum, maximum):
@@ -100,6 +115,7 @@ def _normalise_settings(settings):
     result["channel"] = _channel(result["channel"])
     result["noteOffset"] = _integer(result["noteOffset"], "Note offset", -127, 127)
     result["mapping"] = normalise_mapping(result["mapping"])
+    result['mpcPadNotes'] = normalise_mpc_notes(result.get('mpcPadNotes'))
     if result["profile"] not in PROFILES:
         raise ValueError("Unknown MIDI pad profile.")
     for field in ("audioDeviceName", "hostApiName", "midiInputName", "cliPath"):
@@ -186,7 +202,7 @@ class MIDIController:
     """
     def __init__(self, input_name, on_pad, on_event=lambda event: None,
                  on_error=lambda message: None, channel=None, note_offset=0,
-                 profile="sp404_a", mapping=None):
+                 profile="sp404_a", mapping=None, mpc_notes=None):
         self.input_name = str(input_name or "")
         self.on_pad, self.on_event, self.on_error = on_pad, on_event, on_error
         self.channel = _channel(channel)
@@ -194,7 +210,8 @@ class MIDIController:
         if profile not in PROFILES:
             raise ValueError("Unknown MIDI pad profile.")
         self.profile = profile
-        self._mpc_notes = MPC_A_NOTES
+        self._mpc_notes = tuple(normalise_mpc_notes(mpc_notes))
+        self._mpc_bank = 0
         self._mapping = normalise_mapping(mapping)
         self._port = None
         self._active = False
@@ -224,10 +241,11 @@ class MIDIController:
         return self.mapping
 
     def set_mpc_bank(self, bank):
-        from .mpc1000 import pad_notes
         bank = _integer(bank, 'MPC bank', 0, 3)
         with self._lock:
-            self._mpc_notes = tuple(pad_notes(bank))
+            # Hardware banks are input aliases for the visible sixteen pads.
+            # Never reject a physical bank just because the editor bank differs.
+            self._mpc_bank = bank
 
     @property
     def learning(self):
@@ -344,7 +362,7 @@ class MIDIController:
                 else:
                     pad = self._mapping.get(f"{channel}:{note}", self._mapping.get(f"*:{note}"))
                     if pad is None and self.profile != "custom":
-                        default_pad = (self._mpc_notes.index(note - self.note_offset)
+                        default_pad = (self._mpc_notes.index(note - self.note_offset) % 16
                             if self.profile == "mpc1000" and note - self.note_offset in self._mpc_notes
                             else -1 if self.profile == "mpc1000" else note - 36 - self.note_offset)
                         if 0 <= default_pad <= 15:

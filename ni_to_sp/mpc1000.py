@@ -33,6 +33,18 @@ def pad_notes(bank=0):
     return list(data if bank is None else data[bank * 16:bank * 16 + 16])
 
 
+def read_pad_notes(path):
+    """Read an MPC1000 program's pad routing without loading its sample files."""
+    with Path(path).open('rb') as stream:
+        data = stream.read(FILE_SIZE + 1)
+    if len(data) != FILE_SIZE or data[4:20] != b'MPC1000 PGM 1.00':
+        raise ValueError('Choose an MPC1000 PGM 1.00 program, or use MIDI Learn for another format.')
+    notes = list(data[0x2918:0x2958])
+    if len(set(notes)) != 64 or any(note > 127 or data[0x2958 + note] != i for i, note in enumerate(notes)):
+        raise ValueError('This program has an invalid pad-note table. Your existing mapping was kept.')
+    return notes
+
+
 def program_bytes(names):
     if len(names) not in (16, 64):
         raise ValueError('An MPC1000 program must contain 16 or 64 pad positions.')

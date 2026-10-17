@@ -21,3 +21,5 @@ SP-backups/
 *.flac
 *.ogg
 *.smp
+
+/vendor-source/

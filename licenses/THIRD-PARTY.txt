@@ -1,6 +1,7 @@
 NI to SP uses a separate sp404.exe built from TuscanPL/SparkyMK2 v0.7.3.
 SparkyMK2 is GPL-3.0 licensed. See SparkyMK2-GPL-3.0.txt and the matching
-SparkyMK2-source.zip supplied with the application outputs.
+SparkyMK2-source.zip supplied with the application release downloads.
+Matching source: https://github.com/diamond-one/NI-Expansion-to-SP404MK2-and-MPC1000-2500/releases/download/v0.11.0/SparkyMK2-source.zip
 
 Python runtime libraries: CustomTkinter, darkdetect, mido, numpy, scipy,
 sounddevice/PortAudio, soundfile/libsndfile, cffi, pycparser and Pillow.

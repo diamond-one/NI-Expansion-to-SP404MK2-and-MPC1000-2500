@@ -11,12 +11,12 @@ from .capture_ui import BG, PANEL, CONTROL, TEXT, MUTED, ACCENT, AMBER
 from .direct import preview_session, usable, inspect_group
 from .kit_editor import (MODES, ExpansionPool, empty_kit, assign, clear, refresh,
                          sample_row, save_kit, open_kit, from_prepared)
-from .live_midi import list_input_ports
+from .live_midi import list_input_ports, MPC_PAD_NOTES
 from .audio import simple_audio_outputs, audio_output_label
 from .mpc1000 import export_program
 
 PROFILE_LABELS = {'SP-404 Mode A': 'sp404_a', 'SP-404 Mode B': 'sp404_b',
-    'MPC1000 / JJOS 0.3 · standard': 'mpc1000',
+    'MPC1000 / JJOS3 · program pads': 'mpc1000',
     'MPC / controller · notes 36–51': 'linear', 'Custom · learned pads only': 'custom'}
 
 
@@ -326,6 +326,11 @@ class LegacyApp(BrowserApp):
             self.connection_settings['mapping'] = event['mapping']
             self.save_connections()
             self.set_status(f"Learned pad {event['pad'] + 1:02d} · MIDI note {event['note']}")
+        elif event.get('type') == 'unmapped':
+            self.set_status(f"MIDI channel {event['channel']}, note {event['note']} received. " +
+                ('Load the MPC program note map in Connections, or use MIDI Learn.'
+                 if self.connection_settings.get('profile') == 'mpc1000'
+                 else 'For an MPC, choose MPC1000 / JJOS3 in Connections.'))
 
     def audio_settings(self):
         from . import desk_theme as T
@@ -335,12 +340,13 @@ class LegacyApp(BrowserApp):
             outputs, inputs = result
             window = ctk.CTkToplevel(self)
             window.title('MIDI preview connections')
-            window.geometry('720x590')
-            window.minsize(650, 560)
+            window.geometry('720x730')
+            window.minsize(650, 710)
             window.configure(fg_color=T.WORKSPACE)
             window.transient(self)
             window.grab_set()
-            form = ctk.CTkFrame(window, fg_color=T.PAPER, corner_radius=8)
+            window.controls = []
+            form = ctk.CTkFrame(window, fg_color=T.PAPER, corner_radius=0, border_width=2, border_color=T.LINE)
             form.pack(fill='both', expand=True, padx=16, pady=16)
             T.label(form, 'Preview connections', 24, T.INK, True, True).pack(anchor='w', padx=24, pady=(20, 8))
             T.label(form, 'Play this kit from your hardware pads. The sound comes from the selected computer audio output.',
@@ -353,16 +359,53 @@ class LegacyApp(BrowserApp):
                 mapping[label] = output['index']
             current = next((k for k, v in mapping.items() if v == getattr(self, 'output_device', None)), 'Computer default')
             audio = tk.StringVar(value=current)
-            midi = tk.StringVar(value=self.connection_settings.get('midiInputName') or 'Automatic SP input')
+            midi = tk.StringVar(value=self.connection_settings.get('midiInputName') or 'Auto detect MIDI input')
             profile = tk.StringVar(value=next((k for k, v in PROFILE_LABELS.items() if v == self.connection_settings.get('profile')), 'SP-404 Mode A'))
             channel = tk.StringVar(value=str(self.connection_settings.get('channel') or 'Any'))
-            for title, var, values in [('Audio output', audio, list(mapping)), ('MIDI input', midi, ['Automatic SP input', *inputs]),
+            for title, var, values in [('Audio output', audio, list(mapping)), ('MIDI input', midi, ['Auto detect MIDI input', *inputs]),
                     ('Pad mapping', profile, list(PROFILE_LABELS)), ('MIDI channel', channel, ['Any', *map(str, range(1, 17))])]:
                 T.label(form, title, 13, T.MUTED).pack(anchor='w', padx=24)
                 ctk.CTkOptionMenu(form, variable=var, values=values, width=600, height=34,
                     fg_color=T.ACTION, button_color=T.ACTION_HOVER, font=T.font(14),
+                    corner_radius=0, text_color=T.ON_DARK, dropdown_fg_color=T.PAPER,
+                    dropdown_text_color=T.INK, dropdown_hover_color=T.SELECTED,
                     dropdown_font=T.font(13)).pack(fill='x', padx=24, pady=(3, 12))
-            T.label(form, 'SP: USB connection with PAD Note Out enabled.\nMPC1000: MIDI OUT to your computer’s MIDI interface IN. USB is for files.',
+            pending_notes = list(self.connection_settings.get('mpcPadNotes') or MPC_PAD_NOTES)
+            pending_name = self.connection_settings.get('mpcMapName') or 'Standard MPC program'
+            note_label = T.label(form, '', 12, T.MUTED, anchor='w')
+            note_label.pack(fill='x', padx=24, pady=(0, 5))
+            note_buttons = ctk.CTkFrame(form, fg_color='transparent')
+            note_buttons.pack(fill='x', padx=24, pady=(0, 10))
+            def import_notes():
+                nonlocal pending_notes, pending_name
+                path = filedialog.askopenfilename(parent=window, title='Choose the program loaded on your MPC',
+                    initialdir=Path.home() / 'Music/MPC1000/prgms', filetypes=[('MPC programs', '*.PGM *.pgm')])
+                if not path:
+                    return
+                try:
+                    from .mpc1000 import read_pad_notes
+                    value = read_pad_notes(path)
+                except (OSError, ValueError) as exc:
+                    note_label.configure(text=str(exc), text_color=T.MISSING_INK)
+                    return
+                pending_notes, pending_name = value, Path(path).name
+                profile.set('MPC1000 / JJOS3 · program pads')
+                show_note_map()
+            def reset_notes():
+                nonlocal pending_notes, pending_name
+                pending_notes, pending_name = list(MPC_PAD_NOTES), 'Standard MPC program'
+                show_note_map()
+            load_notes = T.button(window, note_buttons, 'Load MPC program map…', import_notes, width=218)
+            load_notes.pack(side='left')
+            reset = T.button(window, note_buttons, 'Use standard map', reset_notes, width=170)
+            reset.pack(side='left', padx=10)
+            def show_note_map(*_):
+                mpc = PROFILE_LABELS[profile.get()] == 'mpc1000'
+                note_label.configure(text=f'Pad notes: {pending_name}' if mpc else 'MPC program mapping is available with the MPC1000 profile.', text_color=T.MUTED)
+                reset.configure(state='normal' if mpc else 'disabled')
+            profile.trace_add('write', show_note_map)
+            show_note_map()
+            T.label(form, 'SP: USB with PAD Note Out enabled.\nMPC: MIDI OUT → interface IN. All four hardware banks play the visible kit bank.\nUse a MIDI track with its output assigned. JJ mpc-ctl button input is a separate function.',
                 13, T.MUTED, wraplength=600, justify='left').pack(anchor='w', padx=24, pady=(2, 12))
             def save():
                 self.disable_live_preview(quiet=True)
@@ -370,20 +413,20 @@ class LegacyApp(BrowserApp):
                 self.output_device = mapping[audio.get()]
                 device = next((o for o in outputs if o['index'] == self.output_device), None)
                 selected = PROFILE_LABELS[profile.get()]
-                if selected != self.connection_settings.get('profile'):
+                if selected != self.connection_settings.get('profile') or (selected == 'mpc1000' and
+                        pending_notes != self.connection_settings.get('mpcPadNotes', list(MPC_PAD_NOTES))):
                     self.connection_settings['mapping'] = {}
                 self.connection_settings.update(profile=selected, channel=None if channel.get() == 'Any' else int(channel.get()),
-                    midiInputName='' if midi.get() == 'Automatic SP input' else midi.get(),
+                    midiInputName='' if midi.get() == 'Auto detect MIDI input' else midi.get(),
+                    mpcPadNotes=pending_notes, mpcMapName=pending_name,
                     audioDeviceName=device['name'] if device else '', hostApiName=device['hostapi_name'] if device else '')
                 self.save_connections()
                 window.destroy()
                 self.set_status('Connections saved. Turn MIDI preview on; right-click any pad for MIDI Learn.')
             buttons = ctk.CTkFrame(form, fg_color='transparent')
             buttons.pack(fill='x', padx=24, pady=(0, 18))
-            ctk.CTkButton(buttons, text='Save connections', command=save, fg_color=T.ACTION,
-                hover_color=T.ACTION_HOVER, text_color=T.ON_DARK, height=38, font=T.font(14, True)).pack(side='right')
-            ctk.CTkButton(buttons, text='Cancel', command=window.destroy, fg_color=T.SOFT,
-                text_color=T.INK, height=38, font=T.font(14), width=100).pack(side='right', padx=10)
+            T.button(window, buttons, 'Save connections', save, primary=True).pack(side='right')
+            T.button(window, buttons, 'Cancel', window.destroy, width=100).pack(side='right', padx=10)
         self.submit(work, done)
 
 

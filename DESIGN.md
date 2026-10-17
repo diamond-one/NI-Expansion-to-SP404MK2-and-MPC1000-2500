@@ -1,4 +1,4 @@
-# Kit workshop 0.11 design
+# Kit workshop 0.12 design
 
 Native Windows / Python CustomTkinter. Operate mode. The user explicitly selected Neo-Brutalism; this replaces the former charcoal/gold world.
 
@@ -18,7 +18,7 @@ Browse → play → select pad → hear alternatives → compare → keep → ex
 
 All library matches remain reachable, with expansion, Favorites, Recent and previous/next. NI Expansions Location and Rescan sit under Sound library. Original NI demo is a persistent toggle that follows browser selection. Favorites exposes removal immediately.
 
-MPC A–D each retain 16 pads. Mode changes keep page instances, pad assignments, Undo, candidates and active bank intact. Save/recovery and a single MPC PGM retain all 64 positions. SP export uses the current bank. Standard MPC MIDI mapping follows the selected bank; MIDI configuration is independent of export destination.
+MPC A–D each retain 16 pads. Mode changes keep page instances, pad assignments, Undo, candidates and active bank intact. Save/recovery and a single MPC PGM retain all 64 positions. SP export uses the current bank. All MPC hardware banks audition the visible software bank; MIDI configuration is independent of export destination.
 
 Candidates stay temporary until Keep. Compare and Discard do not alter committed sounds; exports require a decision. Drops are undoable assignments. Fill empty protects occupied positions. Separate working-kit recovery survives restart; Undo remains session-only.
 
@@ -31,3 +31,5 @@ Mouse/keyboard and MIDI share a preloaded polyphonic audio engine. Background sc
 The transfer window uses the same paper/ink/yellow/cobalt world and bundled typography. It shows the detected project/USB connection, explicit bank buttons A–J, a physical 4×4 destination map, and one Replace existing pads switch. A scrollable body handles shorter windows while the named Send action, progress, status and Cancel/Stop stay pinned below. No backup path form or redundant review checkbox.
 
 Opening the window reads the device; it never writes audio. One SP needs no USB selection. Multiple SPs require an explicit choice. Current bank comes from a validated status response (project/bank/pad), not note guesses or the software's MPC bank. Unknown bank requires user selection. Manual bank overrides survive refresh; changing the bank resets replacement consent. Automatic backups remain mandatory for replacement. The final named Send action accepts the reviewed immutable plan; backend identity, occupied-pad snapshot and bank-protection checks remain enforced.
+
+MPC pad input accepts the 64 program-note assignments across hardware banks A–D and folds each into its physical position in the visible bank. Software bank selection remains an editing choice; hardware-bank mismatch never filters otherwise valid pad hits. Custom program note maps are imported as metadata, validated before replacing preferences, and remain independent of exported PGM mappings. JJ controller input assignments are not used as outgoing-pad mappings.

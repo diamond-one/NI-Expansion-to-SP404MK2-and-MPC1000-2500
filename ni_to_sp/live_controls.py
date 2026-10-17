@@ -191,8 +191,13 @@ class LivePreviewMixin:
                 if not audio_only and input_name and input_name not in inputs:
                     raise ValueError("The saved MIDI input is unavailable. Reconnect it or choose another input in Settings.")
                 if not audio_only and not input_name:
-                    token_hint = "mpc" if settings.get("profile") == "mpc1000" else "404"
-                    input_name = next((name for name in inputs if token_hint in name.casefold()), None)
+                    if settings.get('profile') == 'mpc1000':
+                        candidates = [name for name in inputs if 'mpc' in name.casefold()]
+                        if not candidates:
+                            candidates = [name for name in inputs if 'usb midi' in name.casefold()]
+                        input_name = candidates[0] if len(candidates) == 1 else None
+                    else:
+                        input_name = next((name for name in inputs if '404' in name.casefold()), None)
                     if input_name is None:
                         raise ValueError("Choose your MIDI input in Connections. For MPC1000, select the computer's MIDI interface input.")
                     settings["midiInputName"] = input_name
@@ -233,7 +238,8 @@ class LivePreviewMixin:
                         on_event=lambda event: self.events.put(("live_midi_event", {"token": token, "event": event})),
                         on_error=lambda message: self.events.put(("live_notice", {"token": token, "message": str(message), "source": "midi"})),
                         channel=settings.get("channel"), note_offset=settings.get("noteOffset", 0),
-                        profile=settings.get("profile", "sp404_a"), mapping=settings.get("mapping", {}))
+                        profile=settings.get("profile", "sp404_a"), mapping=settings.get("mapping", {}),
+                        mpc_notes=settings.get('mpcPadNotes'))
                     resources.controller = controller
                     check()
                     controller.connect()

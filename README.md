@@ -1,6 +1,8 @@
-# NI to SP & MPC 0.11 — four-bank kit workshop
+# NI to SP & MPC 0.12 — four-bank kit workshop
 
-[Download the latest Windows package](https://github.com/diamond-one/NI-Expansion-to-SP404MK2-and-MPC1000-2500/releases/latest), extract it, and open NI-to-SP-0.11.exe. Python and Maschine do not need to be running. Build an MPC1000 program with banks A–D, audition sounds and export it, or send the current 16-pad bank to the SP-404MKII. This is a sample converter; no recording is required.
+[Download the latest Windows package](https://github.com/diamond-one/NI-Expansion-to-SP404MK2-and-MPC1000-2500/releases/latest), extract it, and open NI-to-SP-0.12.exe. Python and Maschine do not need to be running. Build an MPC1000 program with banks A–D, audition sounds and export it, or send the current 16-pad bank to the SP-404MKII. This is a sample converter; no recording is required.
+
+![Kit workshop showing a loaded NI kit, MPC banks A–D, pad audition and replacement controls](docs/screenshots/main-workspace.png)
 
 ## Neo-Brutalist workspace
 
@@ -12,7 +14,7 @@ Batch export separates Matching kits (your current search, expansion and Favorit
 
 The A–D buttons above the pads select the bank to work on. Each bank has 16 independent pad positions. Switching banks keeps sounds in the other banks. Save, editable-kit recovery and MPC export include all four banks. When browsing an NI kit while a four-bank program is open, that kit loads into the selected bank; the other three banks are kept. Undo restores the previous program state. A temporary candidate is not kept automatically when changing banks; press Keep sound first if you want it.
 
-MPC export produces one PGM with up to 64 sample assignments and the corresponding WAVs. It works even when the bank on screen is empty, provided another bank contains audio. Missing sounds in any bank are counted before export. Next missing pad can move between banks. The MPC1000 MIDI profile follows the selected bank's standard notes; custom MIDI Learn remains available. With an SP controller, its 16 pads audition whichever software bank is selected.
+MPC export produces one PGM with up to 64 sample assignments and the corresponding WAVs. It works even when the bank on screen is empty, provided another bank contains audio. Missing sounds in any bank are counted before export. Next missing pad can move between banks. The MPC1000 profile accepts all four hardware banks and maps their physical positions onto the visible software bank. Choose A–D in the app to select the kit bank you are editing. Custom MIDI Learn remains available. With an SP controller, its 16 pads audition whichever software bank is selected.
 
 SP export and Send to SP use only the current 16-pad bank. Changing the export target keeps the other MPC banks in the editable program.
 
@@ -87,15 +89,15 @@ SP-404MKII:
 3. Choose the SP audio output to monitor the computer audio through it, or use another computer/interface output.
 4. Use an empty hardware bank if you do not want the SP's existing samples to sound too.
 
-MPC1000 / JJOS 0.3:
+MPC1000 / JJOS3:
 
 1. Connect MPC MIDI OUT A or B to your computer MIDI interface's IN. The MPC1000 USB port provides storage transfer, not USB MIDI or audio.
 2. On the MPC, use a MIDI track and assign its MIDI output/channel to that connected output. You can disable the track's internal program to avoid double playback.
-3. Select that interface input in Connections and choose MPC1000 / JJOS 0.3 standard. Any MIDI channel is accepted unless a specific channel is chosen.
+3. Select that interface input in Connections and choose MPC1000 / JJOS3 standard. Any MIDI channel is accepted unless a specific channel is chosen.
 4. Hear the preview through your computer/interface audio output. For monitoring through the MPC, route the interface's analogue output to its recording input and enable the appropriate input monitoring on the MPC.
 5. For altered mappings, enable preview, right-click a software pad, select Learn MIDI note and hit the corresponding hardware pad. Learned notes are saved. The triggering hit learns the note; subsequent hits audition it. The linear notes 36–51 and learned-only profiles are also available.
 
-The standard profile uses bank A notes 37,36,42,82,40,38,46,44,48,47,45,43,49,55,51,53 in MPC pad order. These also match the exported program. Changing mapping profiles clears the previous learned overrides. Preview does not send MIDI back to the hardware.
+The standard profile accepts the MPC program notes for all 64 hardware pads, preserving bottom-left-first physical positions. Switching the MPC hardware bank does not silence the currently visible kit. The note map was checked against twelve local MPC1000 programs. If your MPC has a different program mapping, Connections → Load MPC program map reads its 64 note assignments without copying audio or modifying the MPC. Use standard map restores the default. Changing mapping profiles clears the previous learned overrides. Preview does not send MIDI back to the hardware.
 
 ## Export and transfer to SP-404MKII
 
@@ -122,7 +124,7 @@ Select MPC1000 in the export target, then Export MPC program. This exports the c
 - Short ASCII WAV names, 44.1 kHz / 16-bit PCM, with mono/stereo preserved.
 - PAD_MAP.csv, provenance/hash manifest, sample-memory estimate and loading instructions.
 
-Copy the whole folder to a CF card, MPC disk, or its USB-mounted storage. On the MPC LOAD page, load the PGM with its samples. The exporter uses the MPC's default sample level of 70, no guessed choke groups and one-shot playback. No Maschine effect, tuning or envelope conversion is claimed. Loading on a physical MPC1000 with JJOS 0.3 remains to be checked; software structure and sample formats are validated.
+Copy the whole folder to a CF card, MPC disk, or its USB-mounted storage. On the MPC LOAD page, load the PGM with its samples. The exporter uses the MPC's default sample level of 70, no guessed choke groups and one-shot playback. No Maschine effect, tuning or envelope conversion is claimed. Loading on a physical MPC1000 with JJOS3 remains to be checked; software structure and sample formats are validated.
 
 ## Audio and scope
 
@@ -154,6 +156,16 @@ python -m pip install -r requirements.txt
 python run.py
 ```
 
-Build the standalone Windows executable with `./build.ps1`; the result is in `dist`. Run regression tests with `python -m unittest discover -s tests -v`. Tests create their own temporary audio; they do not import samples to physical hardware. For the generated-fixture packaged runtime check, use `NI-to-SP-0.11.exe --self-check report.json`.
+Build the standalone Windows executable with `./build.ps1`; the result is in `dist`. Run regression tests with `python -m unittest discover -s tests -v`. Tests create their own temporary audio; they do not import samples to physical hardware. For the generated-fixture packaged runtime check, use `NI-to-SP-0.12.exe --self-check report.json`.
 
-`tools/sp404.exe` is the bundled SparkyMK2 USB helper. Its matching source is in `vendor-source/SparkyMK2-source.zip`; license notices are in `licenses`. The app font is loaded privately for the process. No NI expansion content, personal settings, scan databases or audio files are stored in this repository.
+`tools/sp404.exe` is the bundled SparkyMK2 USB helper. Its matching source is in [the matching helper source release asset](https://github.com/diamond-one/NI-Expansion-to-SP404MK2-and-MPC1000-2500/releases/download/v0.11.0/SparkyMK2-source.zip); license notices are in `licenses`. The app font is loaded privately for the process. No NI expansion content, personal settings, scan databases or audio files are stored in this repository.
+
+### MPC controller setup
+
+1. Connect MPC MIDI OUT A or B to the USB MIDI interface IN connected to this computer.
+2. On the MPC main screen, select a MIDI track and assign its output port/channel to that cable. A stopped sequencer is sufficient for pad audition.
+3. In Connections, select MPC1000 / JJOS3 · program pads and the interface input (for example USB Midi 1). Use channel Any initially. Auto detect can use one unambiguous MPC or USB MIDI input; it never guesses between several candidates.
+4. Select a kit, turn MIDI preview on, and tap pads. Every MPC hardware bank plays the visible software bank. Use the app's A–D controls to choose another bank for editing/export. Velocity is preserved.
+5. For a custom note layout, load the PGM currently assigned on the MPC in Connections, then save. This reads pad-note metadata only. MIDI Learn remains available when that program format is unsupported.
+
+JJ's `mpc-ctl` preset assigns **incoming** notes/CCs so a computer can operate the MPC. Those assignments are not a map of the physical pads' outgoing notes. This app opens MIDI inputs only; it does not send JJ bank/transport commands back to the hardware. See [JJ's controller documentation](https://www7a.biglobe.ne.jp/~mpc1000/mpc-ctl/index.htm) and [button input assignments](https://www7a.biglobe.ne.jp/~mpc1000/128xl/button_light.htm).

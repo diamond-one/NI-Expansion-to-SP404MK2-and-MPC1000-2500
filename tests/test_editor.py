@@ -124,7 +124,7 @@ class EditorTests(unittest.TestCase):
         for note in MPC_A_NOTES:
             controller._receive(mido.Message('note_on', channel=15, note=note, velocity=91), controller._generation)
         self.assertEqual(hits, [(i, 91) for i in range(16)])
-        controller._receive(mido.Message('note_on', channel=15, note=60, velocity=91), controller._generation)
+        controller._receive(mido.Message('note_on', channel=15, note=127, velocity=91), controller._generation)
         self.assertEqual(len(hits), 16)
 
 

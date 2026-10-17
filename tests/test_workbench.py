@@ -105,7 +105,7 @@ class WorkbenchTests(unittest.TestCase):
         choices = [w for w in descendants(window) if isinstance(w, ctk.CTkOptionMenu)]
         self.assertEqual(len(choices), 4)
         choices[1].set('MPC interface')
-        choices[2].set('MPC1000 / JJOS 0.3 · standard')
+        choices[2].set('MPC1000 / JJOS3 · program pads')
         choices[3].set('16')
         save = next(w for w in descendants(window) if isinstance(w, ctk.CTkButton) and w.cget('text') == 'Save connections')
         self.app.update()
