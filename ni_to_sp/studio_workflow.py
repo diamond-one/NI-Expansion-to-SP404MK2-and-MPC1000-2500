@@ -44,7 +44,7 @@ class StudioWorkflow:
         self._saved_drafts = {key: value for key, value in names.items() if isinstance(key, str) and isinstance(value, str)} if isinstance(names, dict) else {}
         self._recover_id = self._studio_state.get('current')
         super().__init__()
-        self.title('NI to SP & MPC 0.14 · Kit workshop')
+        self.title('NI to SP & MPC 0.15 · Kit workshop')
         if not self._recover_id and (self.data_dir / 'last-edited-kit.json').is_file():
             try:
                 previous = open_kit(self.data_dir / 'last-edited-kit.json')
@@ -57,6 +57,18 @@ class StudioWorkflow:
         self.after(40, self.poll_music)
         self.refresh_draft_menu()
 
+    def toggle_theme(self):
+        import customtkinter as ctk
+        from . import desk_theme as T
+        self.theme_mode = 'dark' if self.theme_mode == 'light' else 'light'
+        ctk.set_appearance_mode(self.theme_mode)
+        self.theme_button.configure(text='Theme: ' + self.theme_mode.title())
+        T.refresh_native(self)
+        try:
+            self.write_studio_state()
+        except OSError as exc:
+            self.set_status('Theme changed; preference could not be saved: ' + str(exc))
+
     def draft_path(self, identity):
         key = hashlib.sha256(str(identity).encode()).hexdigest()[:32]
         (self.data_dir / 'working-kits').mkdir(parents=True, exist_ok=True)
@@ -65,7 +77,7 @@ class StudioWorkflow:
     def write_studio_state(self):
         state = {'current': self.kit['id'] if self.kit and self._dirty else self._recover_id,
                  'favorites': sorted(self._favorites), 'recents': self._recents[:100],
-                 'target': self.target_var.get(),
+                 'target': self.target_var.get(), 'theme': self.theme_mode,
                  'auto_ni_demo': self.auto_ni_demo.get(), 'expansion_root': self.root_var.get(),
                  'drafts': self._saved_drafts}
         _write_json(self.data_dir / 'studio-session.json', state)

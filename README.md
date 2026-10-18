@@ -1,12 +1,14 @@
 # NI to SP & MPC
 
-**[Download the Windows app](https://github.com/diamond-one/NI-Expansion-to-SP404MK2-and-MPC1000-2500/releases/latest)** · Extract the ZIP and open `NI-to-SP-0.14.exe`.
+**[Download the Windows app](https://github.com/diamond-one/NI-Expansion-to-SP404MK2-and-MPC1000-2500/releases/latest)** · Extract the ZIP and open `NI-to-SP-0.15.exe`.
 
 Turn installed Maschine expansion samples into **SP-404MKII kits** or **MPC1000 programs**. Hear sounds, replace pads and build your own kits before exporting.
 
 Maschine and Python do not need to be running. Your original samples stay untouched. Synths, EQ and effects are not rendered.
 
 ![The kit workshop with a loaded kit, four MPC banks and sound replacement controls](docs/screenshots/main-workspace.png)
+
+[View dark mode](docs/screenshots/dark-mode.png)
 
 ## Make your first kit
 
@@ -19,6 +21,9 @@ Allow about **five minutes for setup**, plus download and library scanning time.
 5. **Choose your export target:** SP-404MKII or MPC1000. Follow the matching export steps below.
 
 **You can audition with the mouse straight away. MIDI setup is optional.**
+
+Use **Theme: Light / Dark** in the top bar to switch appearance. Your choice is
+remembered. Switching keeps your kit, banks, Undo history and MIDI preview running.
 
 ## Change a sound
 
@@ -170,7 +175,7 @@ python run.py
 
 Build with `./build.ps1`; the executable is written to `dist`.
 
-Run tests with `python -m unittest discover -s tests -v`. For packaged checks, use `NI-to-SP-0.14.exe --self-check report.json`. These checks use generated fixtures and do not transfer samples to physical hardware.
+Run tests with `python -m unittest discover -s tests -v`. For packaged checks, use `NI-to-SP-0.15.exe --self-check report.json`. These checks use generated fixtures and do not transfer samples to physical hardware.
 
 </details>
 

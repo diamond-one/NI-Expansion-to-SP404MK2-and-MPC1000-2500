@@ -1,6 +1,9 @@
-# Validation — Kit workshop 0.14
+# Validation — Kit workshop 0.15
 
 Verified 18 October 2026.
+
+- Version 0.15 adds a remembered Light/Dark theme button. Colours use paired tokens across workspace and dialogs; the native Tk library list and waveform update explicitly. The switch keeps the loaded group, preview session, audio player and Undo history in place and stays available during background jobs.
+- All 142 regression tests and all 13 packaged checks passed. Added tests cover state preservation, preference persistence, native list colours, availability while busy and text contrast for both palettes.
 
 - Version 0.14 applies the requested Punk direction across the workspace, batch screen, Connections and Send to SP dialog. Oswald is bundled under the SIL Open Font License; controls retain their existing keyboard and MIDI behavior.
 - The packaged 0.14 build passed all 140 regression tests and all 13 runtime checks. Contrast assertions cover primary actions, selected pads and navigation states. Native review covered a loaded kit, batch export, Connections and the read-only Send to SP destination screen. The README image was replaced with a capture from this build.

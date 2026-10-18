@@ -13,6 +13,10 @@ from .waveform import Waveform
 
 def build(app):
     app._desk_ready = False
+    app.theme_mode = app._studio_state.get('theme', 'light')
+    if app.theme_mode not in ('light', 'dark'):
+        app.theme_mode = 'light'
+    ctk.set_appearance_mode(app.theme_mode)
     app.ui_warning_color = T.MISSING_INK
     app.configure(fg_color=T.WORKSPACE)
     app.geometry('1380x920')
@@ -48,6 +52,9 @@ def build(app):
     app.stop_button = T.button(app, connections, 'Stop audio', app.stop_audio, dark=True, width=92)
     app.stop_button.pack(side='left', padx=3)
     app.controls.remove(app.stop_button)
+    app.theme_button = T.button(app, connections, 'Theme: ' + app.theme_mode.title(), app.toggle_theme, dark=True, width=112)
+    app.theme_button.pack(side='left', padx=3)
+    app.controls.remove(app.theme_button)
     app.live_colors = {'on': T.SELECTED, 'pending': T.SOFT, 'off': T.HEADER, 'dark': T.INK, 'text': T.ON_DARK}
 
     library = ctk.CTkFrame(app, fg_color=T.LIBRARY, corner_radius=0, border_width=2, border_color=T.LINE)
@@ -82,9 +89,9 @@ def build(app):
     listing.grid(row=6, column=0, sticky='nsew', padx=10)
     listing.grid_columnconfigure(0, weight=1)
     listing.grid_rowconfigure(0, weight=1)
-    app.kit_list = tk.Listbox(listing, bg=T.LIBRARY_INSET, fg=T.INK, selectbackground=T.SELECTED,
-        selectforeground=T.INK, font=('Segoe UI', 11), width=24, relief='flat', highlightthickness=2,
-        highlightbackground=T.LINE, highlightcolor=T.FOCUS, exportselection=False, activestyle='none')
+    app.kit_list = tk.Listbox(listing, bg=T.resolve(T.LIBRARY_INSET), fg=T.resolve(T.INK), selectbackground=T.resolve(T.SELECTED),
+        selectforeground=T.resolve(T.INK), font=('Segoe UI', 11), width=24, relief='flat', highlightthickness=2,
+        highlightbackground=T.resolve(T.LINE), highlightcolor=T.resolve(T.FOCUS), exportselection=False, activestyle='none')
     app.kit_list.grid(row=0, column=0, sticky='nsew')
     scrollbar = ctk.CTkScrollbar(listing, command=app.kit_list.yview, fg_color=T.LIBRARY_INSET, button_color=T.LINE)
     scrollbar.grid(row=0, column=1, sticky='ns')
@@ -233,7 +240,7 @@ def build(app):
     app.auto_audition = tk.BooleanVar(value=True)
     auto = ctk.CTkCheckBox(inspector, text='Hear candidates automatically', variable=app.auto_audition,
         font=T.font(12), height=22, checkbox_width=18, checkbox_height=18, corner_radius=0,
-        text_color=T.MUTED, border_color=T.LINE, fg_color=T.ACTION)
+        text_color=T.MUTED, border_color=T.LINE, fg_color=T.ACTION, checkmark_color=T.ON_ACTION)
     auto.grid(row=9, column=0, sticky='w', padx=12, pady=(8, 4))
     app.controls.append(auto)
     app.candidate_note = T.label(inspector, '', 12, T.FOCUS, wraplength=266, justify='left', anchor='w')
@@ -277,7 +284,7 @@ def build(app):
     for text, var, command in (('NI preview clips', app.use_previews_var, app.toggle_preview_sources),
                                 ('Export missing as empty', app.silence_var, app.sync)):
         check = ctk.CTkCheckBox(options, text=text, variable=var, command=command, font=T.font(12),
-            text_color=T.MUTED, fg_color=T.ACTION, border_color=T.LINE, width=167 if var is app.silence_var else 125, height=22,
+            text_color=T.MUTED, fg_color=T.ACTION, checkmark_color=T.ON_ACTION, border_color=T.LINE, width=167 if var is app.silence_var else 125, height=22,
             checkbox_width=18, checkbox_height=18, corner_radius=0)
         check.pack(side='left', padx=(0, 8))
         app.controls.append(check)
@@ -341,7 +348,7 @@ def build(app):
     for r, text, var, command in ((1, 'Use NI preset preview clips', app.use_previews_var, app.toggle_preview_sources),
                                  (2, 'Export missing as empty', app.silence_var, app.sync)):
         check = ctk.CTkCheckBox(policy, text=text, variable=var, command=command,
-            font=T.font(14), text_color=T.INK, fg_color=T.ACTION, border_color=T.LINE,
+            font=T.font(14), text_color=T.INK, fg_color=T.ACTION, checkmark_color=T.ON_ACTION, border_color=T.LINE,
             corner_radius=0, checkbox_width=18, checkbox_height=18)
         check.grid(row=r, column=0, sticky='w', padx=20, pady=(0, 8))
         app.controls.append(check)

@@ -368,7 +368,7 @@ class LegacyApp(BrowserApp):
                 T.label(form, title, 13, T.MUTED).pack(anchor='w', padx=24)
                 ctk.CTkOptionMenu(form, variable=var, values=values, width=600, height=34,
                     fg_color=T.ACTION, button_color=T.ACTION_HOVER, font=T.font(14),
-                    corner_radius=0, text_color=T.ON_DARK, dropdown_fg_color=T.PAPER,
+                    corner_radius=0, text_color=T.ON_ACTION, dropdown_fg_color=T.PAPER,
                     dropdown_text_color=T.INK, dropdown_hover_color=T.SELECTED,
                     dropdown_font=T.font(13)).pack(fill='x', padx=24, pady=(3, 12))
             pending_notes = list(self.connection_settings.get('mpcPadNotes') or MPC_PAD_NOTES)

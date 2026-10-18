@@ -1,8 +1,14 @@
-# Kit workshop 0.14 design
+# Kit workshop 0.15 design
 
 Native Windows / Python CustomTkinter. Operate mode. The user chose the Punk prototype on 18 October 2026. The real app applies its cut-paper, ink, acid-selection and condensed-title language across the editor, batch page, Connections and SP transfer window.
 
 ## Visual plan and decision
+
+Light and dark are paired versions of this interface. The top-bar theme button
+switches all live controls in place; the library list and waveform follow the
+same palette. Dark mode uses charcoal surfaces, warm light text, subdued selected
+pad fills and acid primary actions. The saved choice is independent of kits and
+never rebuilds the player, library or bank state.
 
 Paper #F6F3E8, ink #18171B, canvas #E7E5DC, acid selection #E5F26A, lavender mode selection #B4A4D0 and warning #F2C1BD. Heavy black rules and square paper panels keep the workspace direct. The masthead is an acid paper strip; kit names sit on an ink label. Primary actions use acid lettering on ink. Selected pads use acid with an outline; missing states retain explicit text. No raster textures or fake distressed controls obscure sound names.
 

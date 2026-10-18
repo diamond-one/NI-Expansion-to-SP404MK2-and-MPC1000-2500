@@ -3,29 +3,44 @@ from pathlib import Path
 import os
 import customtkinter as ctk
 
-HEADER = '#18171B'
-LIBRARY = '#F6F3E8'
-LIBRARY_INSET = '#F6F3E8'
-WORKSPACE = '#E7E5DC'
-PAPER = '#F6F3E8'
-INK = '#18171B'
-MUTED = '#53524C'
-ON_DARK = '#F6F3E8'
-ON_ACTION = '#E5F26A'
-DARK_MUTED = '#53524C'
-ACTION = '#18171B'
-ACTION_HOVER = '#34313C'
-LINE = '#18171B'
-SOFT = '#DDD9CE'
-SELECTED = '#E5F26A'
-NAV_SELECTED = '#B4A4D0'
-MISSING = '#F2C1BD'
-MISSING_INK = '#701E0F'
-PREVIEW = '#D6CAE9'
-PREVIEW_INK = '#443354'
-EMPTY = '#DDD9CE'
-FOCUS = '#624A7A'
+HEADER = ('#18171B', '#101013')
+LIBRARY = ('#F6F3E8', '#24242B')
+LIBRARY_INSET = ('#F6F3E8', '#24242B')
+WORKSPACE = ('#E7E5DC', '#19191F')
+PAPER = ('#F6F3E8', '#292930')
+INK = ('#18171B', '#F6F3E8')
+MUTED = ('#53524C', '#C3BFB5')
+ON_DARK = ('#F6F3E8', '#F6F3E8')
+ON_ACTION = ('#E5F26A', '#18171B')
+DARK_MUTED = ('#53524C', '#C3BFB5')
+ACTION = ('#18171B', '#E5F26A')
+ACTION_HOVER = ('#34313C', '#CAD75F')
+LINE = ('#18171B', '#969389')
+SOFT = ('#DDD9CE', '#3A3942')
+SELECTED = ('#E5F26A', '#414B1D')
+NAV_SELECTED = ('#B4A4D0', '#524164')
+MISSING = ('#F2C1BD', '#552B2A')
+MISSING_INK = ('#701E0F', '#FFDAD4')
+PREVIEW = ('#D6CAE9', '#493957')
+PREVIEW_INK = ('#443354', '#EBDAFF')
+EMPTY = ('#DDD9CE', '#34333B')
+FOCUS = ('#624A7A', '#C9AFE8')
 _fonts_loaded = False
+
+
+def resolve(colour, mode=None):
+    """Resolve a paired colour for native Tk surfaces that cannot use CTk pairs."""
+    if isinstance(colour, (tuple, list)):
+        return colour[1 if (mode or ctk.get_appearance_mode()).lower() == 'dark' else 0]
+    return colour
+
+
+def refresh_native(app):
+    app.kit_list.configure(bg=resolve(LIBRARY_INSET), fg=resolve(INK),
+        selectbackground=resolve(SELECTED), selectforeground=resolve(INK),
+        highlightbackground=resolve(LINE), highlightcolor=resolve(FOCUS))
+    app.waveform.configure(background=resolve(WORKSPACE))
+    app.waveform._draw()
 
 
 def load_fonts():

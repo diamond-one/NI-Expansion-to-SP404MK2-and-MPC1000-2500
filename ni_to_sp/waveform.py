@@ -12,7 +12,7 @@ from . import desk_theme as T
 
 class Waveform(tk.Canvas):
     def __init__(self, parent, **kwargs):
-        super().__init__(parent, height=72, background=T.WORKSPACE,
+        super().__init__(parent, height=72, background=T.resolve(T.WORKSPACE),
                          highlightthickness=0, **kwargs)
         self._key, self._serial, self._points = None, 0, None
         self._message, self.metadata = 'Drop or choose a sample', ''
@@ -75,16 +75,16 @@ class Waveform(tk.Canvas):
         self.delete('all')
         w, h = self.winfo_width(), self.winfo_height()
         mid = (h - 16) / 2 if self._points else h / 2
-        self.create_line(10, mid, max(10, w - 10), mid, fill=T.LINE)
+        self.create_line(10, mid, max(10, w - 10), mid, fill=T.resolve(T.LINE))
         if self._points:
             peak = max(max(self._points), 1e-6)
             for i, value in enumerate(self._points):
                 x = 10 + i / max(1, len(self._points) - 1) * max(1, w - 20)
                 height = max(1, value / peak * (mid - 6))
-                self.create_line(x, mid - height, x, mid + height, fill=T.ACTION)
-            self.create_text(10, h - 7, text=self.metadata, anchor='w', fill=T.MUTED, font=('Segoe UI', 10))
+                self.create_line(x, mid - height, x, mid + height, fill=T.resolve(T.ACTION))
+            self.create_text(10, h - 7, text=self.metadata, anchor='w', fill=T.resolve(T.MUTED), font=('Segoe UI', 10))
         else:
-            self.create_text(w / 2, mid, text=self._message, fill=T.MUTED, font=('Segoe UI', 11))
+            self.create_text(w / 2, mid, text=self._message, fill=T.resolve(T.MUTED), font=('Segoe UI', 11))
 
     def destroy(self):
         self._serial += 1

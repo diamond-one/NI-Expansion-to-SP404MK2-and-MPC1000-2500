@@ -71,6 +71,7 @@ class WorkbenchTests(unittest.TestCase):
 
     def test_actions_fit_and_text_colours_have_readable_contrast(self):
         def luminance(hex_colour):
+            hex_colour = T.resolve(hex_colour, 'light')
             values = [int(hex_colour[i:i + 2], 16) / 255 for i in (1, 3, 5)]
             values = [v / 12.92 if v <= .04045 else ((v + .055) / 1.055) ** 2.4 for v in values]
             return sum(a * b for a, b in zip(values, (.2126, .7152, .0722)))
@@ -117,3 +118,39 @@ class WorkbenchTests(unittest.TestCase):
             self.assertEqual(self.app.connection_settings['profile'], profile)
             self.assertEqual(self.app.connection_settings['channel'], 16)
             self.assertEqual(self.app.connection_settings['midiInputName'], 'MPC interface')
+
+    def test_theme_switch_preserves_work_preview_and_bank_and_persists(self):
+        import copy
+        import json
+        from ni_to_sp.direct import inspect_group
+        self.app.set_sample(0, inspect_group(self.kit)['pads'][0]['source'])
+        before = copy.deepcopy(self.app.group)
+        session, player, undo = self.app.session, self.app.player, copy.deepcopy(self.app.undo_history)
+        self.app.toggle_theme()
+        self.app.update()
+        self.assertEqual(self.app.theme_mode, 'dark')
+        self.assertEqual(self.app.group, before)
+        self.assertIs(self.app.session, session)
+        self.assertIs(self.app.player, player)
+        self.assertEqual(self.app.undo_history, undo)
+        self.assertEqual(self.app.kit_list.cget('bg').lower(), T.resolve(T.LIBRARY_INSET, 'dark').lower())
+        state = json.loads((self.app.data_dir / 'studio-session.json').read_text())
+        self.assertEqual(state['theme'], 'dark')
+        self.app.busy = True
+        self.app.sync()
+        self.assertEqual(self.app.theme_button.cget('state'), 'normal')
+        self.app.toggle_theme()
+        self.app.busy = False
+        self.assertEqual(self.app.theme_mode, 'light')
+
+    def test_dark_text_contrast(self):
+        def luminance(token):
+            colour = T.resolve(token, 'dark')
+            rgb = [int(colour[i:i+2], 16) / 255 for i in (1, 3, 5)]
+            rgb = [v/12.92 if v <= .04045 else ((v+.055)/1.055)**2.4 for v in rgb]
+            return sum(a*b for a,b in zip(rgb, (.2126,.7152,.0722)))
+        for foreground, background in ((T.INK,T.PAPER), (T.MUTED,T.WORKSPACE),
+                (T.ON_DARK,T.HEADER), (T.ON_ACTION,T.ACTION), (T.INK,T.SELECTED),
+                (T.INK,T.NAV_SELECTED), (T.MISSING_INK,T.MISSING)):
+            a,b = sorted((luminance(foreground),luminance(background)))
+            self.assertGreaterEqual((b+.05)/(a+.05),4.5)
