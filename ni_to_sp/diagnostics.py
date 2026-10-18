@@ -105,6 +105,7 @@ def self_check(report_path):
                 assert browser.mpc_button.cget('state') == 'normal'
                 import tkinter.font
                 assert 'Space Grotesk' in tkinter.font.families(browser)
+                assert 'Oswald' in tkinter.font.families(browser)
                 before = json.dumps(browser.group, sort_keys=True)
                 browser.tabs.mode_buttons['Batch export'].invoke()
                 browser.update()
@@ -115,7 +116,7 @@ def self_check(report_path):
             finally:
                 browser.close()
             report['checks'].append('Direct group reader, named 16-pad browser, sample export and immediate preview session without a Maschine render')
-            report['checks'].append('Bundled Space Grotesk loaded; native workspace mode controls preserve the loaded kit')
+            report['checks'].append('Bundled Oswald and Space Grotesk loaded; native workspace mode controls preserve the loaded kit')
             import mido.backends.rtmidi
             import rtmidi
             assert hasattr(rtmidi, 'MidiIn')

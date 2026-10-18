@@ -44,7 +44,7 @@ class StudioWorkflow:
         self._saved_drafts = {key: value for key, value in names.items() if isinstance(key, str) and isinstance(value, str)} if isinstance(names, dict) else {}
         self._recover_id = self._studio_state.get('current')
         super().__init__()
-        self.title('NI to SP & MPC 0.13 · Kit workshop')
+        self.title('NI to SP & MPC 0.14 · Kit workshop')
         if not self._recover_id and (self.data_dir / 'last-edited-kit.json').is_file():
             try:
                 previous = open_kit(self.data_dir / 'last-edited-kit.json')

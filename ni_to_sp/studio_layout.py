@@ -29,7 +29,9 @@ def build(app):
     head = ctk.CTkFrame(app, fg_color=T.HEADER, corner_radius=0)
     head.grid(row=0, column=0, columnspan=2, sticky='ew')
     head.grid_columnconfigure(1, weight=1)
-    T.label(head, 'Kit workshop', 25, T.ON_DARK, True, True).grid(row=0, column=0, padx=18, pady=16)
+    app.brand_label = T.label(head, 'Kit workshop', 27, T.INK, True, True,
+        fg_color=T.SELECTED, corner_radius=0, padx=12, pady=2)
+    app.brand_label.grid(row=0, column=0, padx=18, pady=12)
     files = ctk.CTkFrame(head, fg_color='transparent')
     files.grid(row=0, column=1, sticky='w', padx=10)
     app.new_button = T.button(app, files, 'New kit', app.new_empty, dark=True, width=84)
@@ -46,7 +48,7 @@ def build(app):
     app.stop_button = T.button(app, connections, 'Stop audio', app.stop_audio, dark=True, width=92)
     app.stop_button.pack(side='left', padx=3)
     app.controls.remove(app.stop_button)
-    app.live_colors = {'on': T.ACTION, 'pending': T.SOFT, 'off': T.HEADER, 'dark': T.ON_DARK, 'text': T.ON_DARK}
+    app.live_colors = {'on': T.SELECTED, 'pending': T.SOFT, 'off': T.HEADER, 'dark': T.INK, 'text': T.ON_DARK}
 
     library = ctk.CTkFrame(app, fg_color=T.LIBRARY, corner_radius=0, border_width=2, border_color=T.LINE)
     library.grid(row=1, column=0, sticky='nsew')
@@ -123,8 +125,9 @@ def build(app):
     title = ctk.CTkFrame(play, fg_color='transparent')
     title.grid(row=0, column=0, sticky='ew', pady=(2, 4))
     title.grid_columnconfigure(0, weight=1)
-    app.kit_title = T.label(title, 'Untitled kit', 28, T.INK, True, True, anchor='w')
-    app.kit_title.grid(row=0, column=0, sticky='ew')
+    app.kit_title = T.label(title, 'Untitled kit', 30, T.ON_DARK, True, True,
+        fg_color=T.HEADER, corner_radius=0, padx=12, pady=3, anchor='w')
+    app.kit_title.grid(row=0, column=0, sticky='w')
     T.button(app, title, 'Rename', app.rename_kit, width=78).grid(row=0, column=1, padx=(8, 0))
     app.draft_status = T.label(title, 'New kit', 12, T.MUTED, anchor='w')
     app.draft_status.grid(row=1, column=0, sticky='ew')
@@ -484,7 +487,7 @@ def sync(app):
     app.previous_button.configure(state='normal' if app._candidate_positions.get(app.selected_pad, -1) > 0 and not app._candidate_loading and not app.busy else 'disabled')
     for button in (app.keep_button, app.discard_button):
         button.configure(state='normal' if candidate and not app.busy else 'disabled')
-    app.keep_button.configure(fg_color=T.ACTION if candidate else T.SOFT, text_color=T.ON_DARK if candidate else T.MUTED)
+    app.keep_button.configure(fg_color=T.ACTION if candidate else T.SOFT, text_color=T.ON_ACTION if candidate else T.MUTED)
     app.compare_button.configure(state='normal' if candidate and not app.busy else 'disabled',
         text='Hear candidate' if app._comparison_original else 'Compare original')
     app.quality.configure(text=('Keep or discard the candidate before exporting.' if candidate else
@@ -500,6 +503,6 @@ def sync(app):
         app.send_open_button.grid()
         if not app.export_button.winfo_manager():
             app.export_button.pack(side='right', before=app.next_missing_button)
-    app.mpc_button.configure(fg_color=T.ACTION if ready and not candidate and (not missing or app.silence_var.get()) else T.SOFT, text_color=T.ON_DARK if ready and not candidate and (not missing or app.silence_var.get()) else T.MUTED)
-    app.send_open_button.configure(fg_color=T.ACTION if ready and not candidate and (not missing or app.silence_var.get()) else T.SOFT, text_color=T.ON_DARK if ready and not candidate and (not missing or app.silence_var.get()) else T.MUTED)
+    app.mpc_button.configure(fg_color=T.ACTION if ready and not candidate and (not missing or app.silence_var.get()) else T.SOFT, text_color=T.ON_ACTION if ready and not candidate and (not missing or app.silence_var.get()) else T.MUTED)
+    app.send_open_button.configure(fg_color=T.ACTION if ready and not candidate and (not missing or app.silence_var.get()) else T.SOFT, text_color=T.ON_ACTION if ready and not candidate and (not missing or app.silence_var.get()) else T.MUTED)
     update_random_help(app)

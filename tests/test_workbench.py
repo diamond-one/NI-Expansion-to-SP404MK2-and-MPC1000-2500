@@ -75,7 +75,8 @@ class WorkbenchTests(unittest.TestCase):
             values = [v / 12.92 if v <= .04045 else ((v + .055) / 1.055) ** 2.4 for v in values]
             return sum(a * b for a, b in zip(values, (.2126, .7152, .0722)))
         for foreground, background in ((T.INK, T.WORKSPACE), (T.MUTED, T.PAPER),
-                (T.ON_DARK, T.ACTION), (T.DARK_MUTED, T.LIBRARY), (T.MISSING_INK, T.MISSING)):
+                (T.ON_DARK, T.HEADER), (T.ON_ACTION, T.ACTION), (T.INK, T.SELECTED),
+                (T.INK, T.NAV_SELECTED), (T.DARK_MUTED, T.LIBRARY), (T.MISSING_INK, T.MISSING)):
             a, b = sorted((luminance(foreground), luminance(background)))
             self.assertGreaterEqual((b + .05) / (a + .05), 4.5)
         for geometry in ('1120x800', '1320x900'):

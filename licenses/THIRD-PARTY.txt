@@ -16,3 +16,7 @@ The default sample converter does not run or record the Maschine application.
 Drag-and-drop uses tkinterdnd2/TkDND; see tkinterdnd2.txt and bundled runtime notices.
 MPC1000 program export adapts the user's CrateBuilder writer and Stephen Norum's
 unmodified default template. See pympc1000.txt.
+
+Oswald font
+Source: https://github.com/google/fonts/tree/main/ofl/oswald
+Licence: SIL Open Font Licence 1.1, included in Oswald-OFL.txt.

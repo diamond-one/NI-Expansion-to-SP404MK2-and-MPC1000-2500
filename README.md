@@ -1,6 +1,6 @@
 # NI to SP & MPC
 
-**[Download the Windows app](https://github.com/diamond-one/NI-Expansion-to-SP404MK2-and-MPC1000-2500/releases/latest)** · Extract the ZIP and open `NI-to-SP-0.13.exe`.
+**[Download the Windows app](https://github.com/diamond-one/NI-Expansion-to-SP404MK2-and-MPC1000-2500/releases/latest)** · Extract the ZIP and open `NI-to-SP-0.14.exe`.
 
 Turn installed Maschine expansion samples into **SP-404MKII kits** or **MPC1000 programs**. Hear sounds, replace pads and build your own kits before exporting.
 
@@ -170,7 +170,7 @@ python run.py
 
 Build with `./build.ps1`; the executable is written to `dist`.
 
-Run tests with `python -m unittest discover -s tests -v`. For packaged checks, use `NI-to-SP-0.13.exe --self-check report.json`. These checks use generated fixtures and do not transfer samples to physical hardware.
+Run tests with `python -m unittest discover -s tests -v`. For packaged checks, use `NI-to-SP-0.14.exe --self-check report.json`. These checks use generated fixtures and do not transfer samples to physical hardware.
 
 </details>
 

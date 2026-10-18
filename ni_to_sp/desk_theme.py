@@ -1,28 +1,30 @@
-"""Neo-Brutalist sampler: paper, ink, deliberate colour and hard edges."""
+"""Punk sampler workspace: paper strips, black ink, acid selection and cut type."""
 from pathlib import Path
 import os
 import customtkinter as ctk
 
-HEADER = '#101010'
-LIBRARY = '#F7F7F0'
-LIBRARY_INSET = '#FFFFFF'
-WORKSPACE = '#E7E8E2'
-PAPER = '#FFFFFF'
-INK = '#101010'
-MUTED = '#45463F'
-ON_DARK = '#FFFFFF'
-DARK_MUTED = '#45463F'
-ACTION = '#2547EB'
-ACTION_HOVER = '#1834BC'
-LINE = '#101010'
-SOFT = '#DCDDD5'
-SELECTED = '#FFE34D'
-MISSING = '#FFC8BE'
+HEADER = '#18171B'
+LIBRARY = '#F6F3E8'
+LIBRARY_INSET = '#F6F3E8'
+WORKSPACE = '#E7E5DC'
+PAPER = '#F6F3E8'
+INK = '#18171B'
+MUTED = '#53524C'
+ON_DARK = '#F6F3E8'
+ON_ACTION = '#E5F26A'
+DARK_MUTED = '#53524C'
+ACTION = '#18171B'
+ACTION_HOVER = '#34313C'
+LINE = '#18171B'
+SOFT = '#DDD9CE'
+SELECTED = '#E5F26A'
+NAV_SELECTED = '#B4A4D0'
+MISSING = '#F2C1BD'
 MISSING_INK = '#701E0F'
-PREVIEW = '#DBE3FF'
-PREVIEW_INK = '#16358B'
-EMPTY = '#F3F3EC'
-FOCUS = '#2547EB'
+PREVIEW = '#D6CAE9'
+PREVIEW_INK = '#443354'
+EMPTY = '#DDD9CE'
+FOCUS = '#624A7A'
 _fonts_loaded = False
 
 
@@ -39,7 +41,7 @@ def load_fonts():
 
 def font(size=14, bold=False, display=False):
     load_fonts()
-    return ctk.CTkFont(family='Space Grotesk' if display else 'Segoe UI',
+    return ctk.CTkFont(family='Oswald' if display else 'Segoe UI',
                       size=size, weight='bold' if bold else 'normal')
 
 
@@ -54,7 +56,7 @@ def button(app, parent, text, command, primary=False, dark=False, **kwargs):
         border_color=LINE, font=font(14, True),
         fg_color=ACTION if primary else HEADER if dark else PAPER,
         hover_color=ACTION_HOVER if primary else '#333333' if dark else SELECTED,
-        text_color=ON_DARK if primary or dark else INK,
+        text_color=ON_ACTION if primary else ON_DARK if dark else INK,
         text_color_disabled='#797A74')
     settings.update(kwargs)
     widget = ctk.CTkButton(parent, text=text, command=command, **settings)
@@ -80,7 +82,7 @@ class WorkbenchPages(ctk.CTkFrame):
         self._current = None
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
-        self.bar = ctk.CTkFrame(self, fg_color=LINE, corner_radius=0)
+        self.bar = ctk.CTkFrame(self, fg_color=WORKSPACE, corner_radius=0)
         self.bar.grid(row=0, column=0, sticky='ew', pady=(12, 16))
         self.bar.grid_columnconfigure((0, 1), weight=1, uniform='modes')
 
@@ -93,7 +95,7 @@ class WorkbenchPages(ctk.CTkFrame):
             height=52, corner_radius=0, border_width=2, border_color=LINE,
             fg_color=PAPER, hover_color=SELECTED, text_color=INK,
             font=font(19, True, True))
-        button.grid(row=0, column=index, sticky='ew', padx=(0, 5), pady=(0, 5))
+        button.grid(row=0, column=index, sticky='ew', padx=(0, 8), pady=0)
         button._canvas.configure(takefocus=1)
         def keyboard(_):
             self.set(name)
@@ -121,6 +123,6 @@ class WorkbenchPages(ctk.CTkFrame):
         self._current = name
         self._pages[name].grid(row=1, column=0, sticky='nsew')
         for label, button in self.mode_buttons.items():
-            button.configure(fg_color=SELECTED if label == name else PAPER)
+            button.configure(fg_color=NAV_SELECTED if label == name else PAPER)
         if notify and self._command:
             self._command()

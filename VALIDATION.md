@@ -1,6 +1,10 @@
-# Validation — Kit workshop 0.13
+# Validation — Kit workshop 0.14
 
-Verified 17 October 2026.
+Verified 18 October 2026.
+
+- Version 0.14 applies the requested Punk direction across the workspace, batch screen, Connections and Send to SP dialog. Oswald is bundled under the SIL Open Font License; controls retain their existing keyboard and MIDI behavior.
+- The packaged 0.14 build passed all 140 regression tests and all 13 runtime checks. Contrast assertions cover primary actions, selected pads and navigation states. Native review covered a loaded kit, batch export, Connections and the read-only Send to SP destination screen. The README image was replaced with a capture from this build.
+- Hardware MIDI playback evidence below was collected for 0.13. No physical transfers or new hardware recording were performed for this visual update.
 
 - Full regression suite: 140 tests passed. Fixtures generate temporary audio and mock device transport; no physical transfer is performed.
 - Packaged runtime check: 13 checks passed. Bundled fonts, MIDI input backend, sample decoding, MPC program output, sample drop and workspace construction were checked.

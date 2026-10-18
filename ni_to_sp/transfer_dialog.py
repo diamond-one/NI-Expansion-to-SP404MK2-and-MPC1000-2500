@@ -153,7 +153,7 @@ class TransferDialog(ctk.CTkToplevel):
         allowed = self.plan is not None and (not self.plan.overwrites or self.replace.get())
         ready = allowed and not locked
         self.send_button.configure(state='normal' if ready else 'disabled',
-            fg_color=T.ACTION if ready else T.SOFT, text_color=T.ON_DARK if ready else T.MUTED)
+            fg_color=T.ACTION if ready else T.SOFT, text_color=T.ON_ACTION if ready else T.MUTED)
         self.close_button.configure(text='Stop after this pad' if self.sending else 'Close' if self.progress.get() == 1 else 'Cancel')
         if self.plan and not self.checking and not self.sending:
             for entry in self.plan.entries:
