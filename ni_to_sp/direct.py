@@ -12,6 +12,7 @@ import math
 import os
 from pathlib import Path, PurePosixPath
 import re
+import struct
 import uuid
 import zlib
 
@@ -23,10 +24,11 @@ from .capture import file_hash, safe_name, load_prepared
 from .model import Sample, Assignment, Session, sp_pad_number
 from .sp_transfer import _write_json
 
-VERSION = 3
+VERSION = 4
 MAX_GROUP_BYTES = 32 * 1024 ** 2
 MAX_AUDIO_SECONDS = 120
 AUDIO_STATUSES = frozenset({'sample', 'preview'})
+DRUMSYNTH_ENGINES = frozenset({'Kick', 'Snare', 'Hihat', 'HiHat', 'Perc', 'Clap', 'Tom', 'Cymbal'})
 
 
 def usable(pad):
@@ -37,12 +39,92 @@ def _preview_name(name):
     return ' '.join(name.casefold().split())
 
 
+def required_synth_pads(group):
+    """Instrument previews cannot silently become empty export positions."""
+    return [p['ni_pad'] for p in group['pads'] if p.get('requires_preview')
+            and not usable(p) and p['status'] != 'empty']
+
+
+def _utf16_field(data, position):
+    if position + 4 > len(data):
+        raise ValueError('Truncated preset identity')
+    count = struct.unpack_from('<I', data, position)[0]
+    end = position + 4 + count * 2
+    if count > 512 or end > len(data):
+        raise ValueError('Invalid preset identity length')
+    value = data[position + 4:end].decode('utf-16le')
+    if any(ord(c) < 32 for c in value):
+        raise ValueError('Invalid preset identity text')
+    return value, end
+
+
+def _identity_tokens(data, name):
+    """Observed NI identity records, with length-prefixed UTF-16 fields.
+
+    Compare the complete identity from an installed preset, not arbitrary strings
+    found in a kit. Macro labels, tags and unrelated presets cannot be aliases.
+    """
+    encoded = name.encode('utf-16le')
+    needle = struct.pack('<I', len(encoded) // 2) + encoded
+    position = data.find(needle)
+    while position >= 0:
+        cursor, fields = position, []
+        try:
+            for _ in range(3):
+                value, cursor = _utf16_field(data, cursor)
+                fields.append(value)
+            header = b'DSIN' + struct.pack('<7I', 1, 1, 1, 1, 2, 1, 0)
+            if fields[1] or fields[2]:
+                if position >= len(header) and data[position-len(header):position] == header:
+                    # Older NMSV archives keep product/tags in a later section.
+                    # The metadata record header plus name/author/vendor is the
+                    # identity; zero padding is not another text field.
+                    yield data[position-len(header):cursor]
+                else:
+                    product, end = _utf16_field(data, cursor)
+                    if product:
+                        yield data[position:end]
+        except (ValueError, UnicodeError):
+            pass
+        position = data.find(needle, position + len(needle))
+
+
+class PreviewIndex(dict):
+    def __init__(self, root):
+        super().__init__()
+        self.root, self.identities = root, None
+
+    def embedded_matches(self, segment, cancel=None):
+        if self.identities is None:
+            identities = []
+            for paths in self.values():
+                for path in paths:
+                    _check_cancel(cancel)
+                    preview = Path(path)
+                    preset = preview.parent.parent / preview.name[:-4]
+                    try:
+                        if preset.is_symlink() or not preset.resolve().is_relative_to(self.root):
+                            continue
+                        stat = preset.stat()
+                        if stat.st_size > MAX_GROUP_BYTES or getattr(stat, 'st_file_attributes', 0) & (0x1000 | 0x400000):
+                            continue
+                        # Identity metadata is near the beginning; do not load a
+                        # large instrument's entire state just to identify it.
+                        with preset.open('rb') as handle:
+                            data = handle.read(256 * 1024)
+                        identities.extend((token, path, preset.stem) for token in _identity_tokens(data, preset.stem))
+                    except (OSError, ValueError):
+                        continue
+            self.identities = identities
+        return {path: name for token, path, name in self.identities if token in segment}
+
+
 @lru_cache(maxsize=64)
 def sound_previews(root):
     """Index sound-preset previews within one expansion, excluding kit demos."""
     root = Path(root).resolve()
     sounds = root / 'Sounds'
-    result = {}
+    result = PreviewIndex(root)
     if not sounds.is_dir() or sounds.is_symlink() or sounds.is_junction():
         return result
     for folder, directories, files in os.walk(sounds, followlinks=False):
@@ -177,6 +259,9 @@ def inspect_group(kit, cancel=None, use_previews=True):
         pad = {'ni_pad': index + 1, 'sp_pad': sp_pad_number(index), 'name': name.strip(),
                'status': 'needs_render', 'source': None, 'references': refs,
                'kind': _kind(name, refs[0] if refs else '')}
+        engines = {m.decode('ascii') for m in re.findall(rb'NI::MASCHINE::DATA::([A-Za-z][A-Za-z0-9_]*)', segment)}
+        drumsynth = bool(engines & DRUMSYNTH_ENGINES)
+        pad['requires_preview'] = not drumsynth and b':INSTR:' in segment
         if len(refs) > 1:
             pad['status'] = 'layered'
         elif len(refs) == 1:
@@ -192,8 +277,17 @@ def inspect_group(kit, cancel=None, use_previews=True):
                     pad.update(status='sample', source=str(candidate), size=stat.st_size, mtime_ns=stat.st_mtime_ns)
             else:
                 pad['status'] = 'missing'
+        if drumsynth:
+            pad.update(status='empty', empty_reason='drumsynth', engine='Maschine DrumSynth',
+                       original_status='needs_render')
+        elif pad['requires_preview'] and pad['status'] == 'sample':
+            # A plug-in's embedded WAV reference may be an oscillator or an
+            # effect asset, rather than a rendered note from the instrument.
+            pad.update(status='needs_render', source=None)
         if pad['status'] in {'needs_render', 'layered', 'missing'}:
-            matches = sound_previews(str(root)).get(_preview_name(pad['name']), [])
+            previews = sound_previews(str(root))
+            embedded = previews.embedded_matches(segment, cancel) if use_previews else {}
+            matches = list(embedded) if embedded else previews.get(_preview_name(pad['name']), [])
             pad['preview_candidates'] = matches
             if use_previews and len(matches) == 1:
                 preview = Path(matches[0])
@@ -206,6 +300,8 @@ def inspect_group(kit, cancel=None, use_previews=True):
                         raise ValueError('Preview audio format or duration is unsupported.')
                     pad.update(original_status=pad['status'], status='preview', source=str(preview),
                                size=stat.st_size, mtime_ns=stat.st_mtime_ns, preview_duration=info.duration,
+                               preview_preset=embedded.get(str(preview), pad['name']),
+                               preview_match='preset_identity' if embedded else 'pad_name',
                                preview_note='NI preset audition clip; note, phrase and processing may differ from the kit.')
                 except (OSError, ValueError, RuntimeError) as exc:
                     pad['preview_error'] = str(exc)
@@ -215,7 +311,7 @@ def inspect_group(kit, cancel=None, use_previews=True):
     return {'mode': 'direct', 'version': VERSION, 'kit': dict(kit), 'kit_sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
             'pads': pads, 'available': sum(usable(p) for p in pads),
             'preview_count': sum(p['status'] == 'preview' for p in pads), 'use_previews': use_previews,
-            'unresolved': [p['ni_pad'] for p in pads if not usable(p)],
+            'unresolved': [p['ni_pad'] for p in pads if not usable(p) and p['status'] != 'empty'],
             'fidelity': 'Original referenced samples and observed slot positions. Maschine tuning, envelopes, layers and effects are not rendered.'}
 
 
@@ -265,6 +361,8 @@ def _load_pad_audio(row, target_rate=48000):
 def prepare_direct(group, destination, allow_unresolved=False, progress=None, cancel=None):
     if group.get('mode') != 'direct' or len(group.get('pads', [])) != 16 or not group['available']:
         raise ValueError('Select a kit containing supported sample pads.')
+    if required_synth_pads(group):
+        raise ValueError('Some synth pads have no verified NI preview. Replace those sounds before exporting.')
     if group['unresolved'] and not allow_unresolved:
         raise ValueError('Some pads need rendering or relinking. Review them, or explicitly allow silence for those positions.')
     if group['kit'].get('path') and file_hash(group['kit']['path']) != group['kit_sha256']:
@@ -337,6 +435,8 @@ def prepare_direct(group, destination, allow_unresolved=False, progress=None, ca
                          'sample_id': identity, 'source_sha256': digest, 'output_sha256': digest, 'file': name,
                          'original_source': row['source'], 'original_sha256': original_hash,
                          'source_status': row['status'], 'intentional_empty': empty})
+            rows[-1].update(preview_preset=row.get('preview_preset'), preview_match=row.get('preview_match'),
+                            empty_reason=row.get('empty_reason'))
             reports.append({**row, 'issues': [], 'intentional_empty': empty})
         if group['kit'].get('path') and file_hash(group['kit']['path']) != group['kit_sha256']:
             raise ValueError('Original kit changed during conversion.')
@@ -380,7 +480,8 @@ def prepare_batch(kits, destination, allow_unresolved=False, progress=None, canc
             group = inspect_group(kit, cancel, use_previews)
             output, _ = prepare_direct(group, destination, allow_unresolved, cancel=cancel)
             report['converted'].append({'kit': kit['name'], 'pack': kit['pack'], 'folder': str(output),
-                                        'silent_pads': group['unresolved'], 'preview_pads': [p['ni_pad'] for p in group['pads'] if p['status'] == 'preview']})
+                                        'silent_pads': group['unresolved'], 'preview_pads': [p['ni_pad'] for p in group['pads'] if p['status'] == 'preview'],
+                                        'drumsynth_empty_pads': [p['ni_pad'] for p in group['pads'] if p.get('empty_reason') == 'drumsynth']})
         except InterruptedError:
             report['cancelled'] = True
             break

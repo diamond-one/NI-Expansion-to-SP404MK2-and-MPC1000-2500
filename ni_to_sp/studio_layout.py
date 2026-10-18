@@ -5,7 +5,7 @@ import textwrap
 import customtkinter as ctk
 
 from . import desk_theme as T
-from .direct import usable
+from .direct import usable, required_synth_pads
 from .kit_editor import MODES, ExpansionPool
 from .live_midi import load_settings
 from .waveform import Waveform
@@ -280,9 +280,9 @@ def build(app):
     app.mpc_button.grid(row=0, column=2, padx=12, pady=(10, 3))
     options = ctk.CTkFrame(export, fg_color='transparent')
     options.grid(row=1, column=0, columnspan=3, sticky='ew', padx=12, pady=(2, 10))
-    app.use_previews_var, app.silence_var = tk.BooleanVar(value=False), tk.BooleanVar(value=False)
-    for text, var, command in (('NI preview clips', app.use_previews_var, app.toggle_preview_sources),
-                                ('Export missing as empty', app.silence_var, app.sync)):
+    app.use_previews_var, app.silence_var = tk.BooleanVar(value=True), tk.BooleanVar(value=False)
+    T.label(options, 'Synth previews: auto', 12, T.MUTED, anchor='w').pack(side='left', padx=(0, 10))
+    for text, var, command in (('Export missing as empty', app.silence_var, app.sync),):
         check = ctk.CTkCheckBox(options, text=text, variable=var, command=command, font=T.font(12),
             text_color=T.MUTED, fg_color=T.ACTION, checkmark_color=T.ON_ACTION, border_color=T.LINE, width=167 if var is app.silence_var else 125, height=22,
             checkbox_width=18, checkbox_height=18, corner_radius=0)
@@ -345,15 +345,16 @@ def build(app):
     T.label(policy, 'Missing sounds & previews', 19, T.INK, True, True,
         anchor='w').grid(row=0, column=0, sticky='ew', padx=20, pady=(16, 8))
     app.batch_policy_checks = {}
-    for r, text, var, command in ((1, 'Use NI preset preview clips', app.use_previews_var, app.toggle_preview_sources),
-                                 (2, 'Export missing as empty', app.silence_var, app.sync)):
+    T.label(policy, 'Synth previews are automatic. DrumSynth pads stay empty.', 14, T.INK, anchor='w').grid(
+        row=1, column=0, sticky='w', padx=20, pady=(0, 10))
+    for r, text, var, command in ((2, 'Export missing as empty', app.silence_var, app.sync),):
         check = ctk.CTkCheckBox(policy, text=text, variable=var, command=command,
             font=T.font(14), text_color=T.INK, fg_color=T.ACTION, checkmark_color=T.ON_ACTION, border_color=T.LINE,
             corner_radius=0, checkbox_width=18, checkbox_height=18)
         check.grid(row=r, column=0, sticky='w', padx=20, pady=(0, 8))
         app.controls.append(check)
         app.batch_policy_checks[text] = check
-    T.label(policy, 'Off: skip kits with unresolved sounds. On: export those positions as silence.\nIntentional empty pads are always allowed. NI clips may contain a musical phrase.',
+    T.label(policy, 'Off: skip kits with unresolved sounds. On: export those positions as silence.\nDrumSynth and intentionally empty pads are allowed. Unmatched synths still need a replacement.',
         13, T.MUTED, wraplength=650, justify='left', anchor='w').grid(row=3, column=0,
         sticky='ew', padx=20, pady=(0, 16))
     reopen = ctk.CTkFrame(batch_scroll, fg_color='transparent')
@@ -440,7 +441,7 @@ def show_group(app):
         lines = textwrap.wrap(name, width=width, break_long_words=True) or ['Empty']
         name = '\n'.join(lines[:2]) + ('…' if len(lines) > 2 else '')
         number = f'{bank}{i + 1:02d}' if mpc else f'SP {row["sp_pad"]:02d}'
-        state = 'Trying sound' if trial else 'Needs sound' if not usable(row) and row['status'] != 'empty' else 'Drop sound' if row['status'] == 'empty' else 'NI preview' if row['status'] == 'preview' else ''
+        state = 'Trying sound' if trial else 'Needs sound' if not usable(row) and row['status'] != 'empty' else 'DrumSynth · empty' if row.get('empty_reason') == 'drumsynth' else 'Drop sound' if row['status'] == 'empty' else 'NI preview' if row['status'] == 'preview' else ''
         color = T.MISSING if not usable(shown) and shown['status'] != 'empty' else T.SELECTED if i == app.selected_pad else T.EMPTY if shown['status'] == 'empty' else T.PAPER
         compact = app.pad_buttons[i].winfo_height() < 70
         # Two lines at small sizes; full identity and status stay in the inspector.
@@ -460,8 +461,9 @@ def show_group(app):
                                  (' · original' if app._candidate and app._comparison_original else ' · candidate' if app._candidate else ''))
     app.sound_name_label.configure(text=row['name'])
     app.pad_state_label.configure(text=('Audio is missing. Choose or find a sound.' if not usable(row) and row['status'] != 'empty'
+        else 'Maschine DrumSynth: left empty for export. Add a replacement if you want.' if row.get('empty_reason') == 'drumsynth'
         else 'Empty pad. Add a sound to begin.' if row['status'] == 'empty'
-        else 'NI preset preview; may contain a phrase.' if row['status'] == 'preview'
+        else 'NI preset preview: ' + row.get('preview_preset', row['name']) + '. May contain a phrase.' if row['status'] == 'preview'
         else 'Original sound' if app._comparison_original else 'Try this sound before keeping it.' if app._candidate
         else 'Replacement sound' if row.get('replacement') else 'Original kit sample'))
     app.waveform.set_source(row)
@@ -482,11 +484,14 @@ def sync(app):
     group = app.group
     missing = len(group['unresolved']) if group else 0
     candidate = bool(app._candidate)
+    required = len(required_synth_pads(group)) if group else 0
     ready = group['available'] if group else 0
     mpc = app.target_var.get() == 'MPC1000'
     if mpc and group:
         from .mpc_banks import counts
         ready, missing = counts(group)
+        from .mpc_banks import all_banks
+        required = sum(len(required_synth_pads(bank)) for bank in all_banks(group))
     app.next_missing_button.configure(state='normal' if missing and not app.busy else 'disabled')
     app.undo_button.configure(state='normal' if app.undo_history and not app.busy else 'disabled')
     app.random_button.configure(state='normal' if app.kits and not app.busy and not app._candidate_loading else 'disabled',
@@ -498,6 +503,7 @@ def sync(app):
     app.compare_button.configure(state='normal' if candidate and not app.busy else 'disabled',
         text='Hear candidate' if app._comparison_original else 'Compare original')
     app.quality.configure(text=('Keep or discard the candidate before exporting.' if candidate else
+        f'{required} synth previews missing · choose replacement sounds' if required else
         f'{ready} sounds · {missing} missing will export empty' if missing and app.silence_var.get() else
         f'{missing} missing sounds · replace them or enable export as empty' if missing else
         f'{ready}/64 sounds · export banks A–D' if mpc and ready else f'{ready}/16 sounds · export current bank' if ready else 'Add sounds to begin'))
@@ -510,6 +516,9 @@ def sync(app):
         app.send_open_button.grid()
         if not app.export_button.winfo_manager():
             app.export_button.pack(side='right', before=app.next_missing_button)
-    app.mpc_button.configure(fg_color=T.ACTION if ready and not candidate and (not missing or app.silence_var.get()) else T.SOFT, text_color=T.ON_ACTION if ready and not candidate and (not missing or app.silence_var.get()) else T.MUTED)
-    app.send_open_button.configure(fg_color=T.ACTION if ready and not candidate and (not missing or app.silence_var.get()) else T.SOFT, text_color=T.ON_ACTION if ready and not candidate and (not missing or app.silence_var.get()) else T.MUTED)
+    app.mpc_button.configure(fg_color=T.ACTION if ready and not candidate and not required and (not missing or app.silence_var.get()) else T.SOFT, text_color=T.ON_ACTION if ready and not candidate and not required and (not missing or app.silence_var.get()) else T.MUTED)
+    app.send_open_button.configure(fg_color=T.ACTION if ready and not candidate and not required and (not missing or app.silence_var.get()) else T.SOFT, text_color=T.ON_ACTION if ready and not candidate and not required and (not missing or app.silence_var.get()) else T.MUTED)
+    if required:
+        for action in (app.mpc_button, app.send_open_button, app.export_button):
+            action.configure(state='disabled')
     update_random_help(app)

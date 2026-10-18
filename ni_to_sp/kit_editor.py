@@ -10,7 +10,7 @@ import uuid
 
 import soundfile as sf
 
-from .direct import inspect_group, usable, _kind, _check_cancel
+from .direct import inspect_group, usable, _kind, _check_cancel, VERSION
 from .model import sp_pad_number
 from .sp_transfer import _write_json
 
@@ -31,7 +31,7 @@ def refresh(group):
 
 
 def empty_kit(name='My kit'):
-    return refresh({'mode': 'direct', 'version': 3, 'kit_sha256': None,
+    return refresh({'mode': 'direct', 'version': VERSION, 'kit_sha256': None,
         'kit': {'id': uuid.uuid4().hex, 'name': name, 'pack': 'My kits', 'path': None, 'root': None},
         'pads': [{'ni_pad': i + 1, 'sp_pad': sp_pad_number(i), 'name': 'Empty',
                   'status': 'empty', 'source': None, 'references': [], 'kind': 'one_shot'} for i in range(16)],
@@ -121,6 +121,19 @@ def open_kit(path):
                         raise ValueError('Sample changed')
                 except (OSError, RuntimeError, ValueError):
                     row.update(status='missing')
+        if bank.get('version', 0) < VERSION or bank.get('use_previews') is False:
+            source = bank.get('origin_kit') or bank.get('bank_kit') or bank['kit']
+            if source.get('path'):
+                try:
+                    from .capture import file_hash
+                    if file_hash(source['path']) == bank.get('kit_sha256'):
+                        original = inspect_group(dict(source, name=Path(source['path']).stem))
+                        for i, row in enumerate(bank['pads']):
+                            if not usable(row) and row['status'] != 'empty' and not row.get('replacement'):
+                                bank['pads'][i] = original['pads'][i]
+                        bank.update(version=VERSION, use_previews=True)
+                except (OSError, ValueError, RuntimeError):
+                    pass  # Offline/changed NI installs never erase saved edits.
         refresh(bank)
     return refresh(group)
 

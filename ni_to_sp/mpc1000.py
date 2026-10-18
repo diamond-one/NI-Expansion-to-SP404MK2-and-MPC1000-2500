@@ -101,6 +101,9 @@ def export_program(group, destination, allow_unresolved=False, progress=None, ca
     pads = [row for bank in banks for row in bank['pads']]
     if len(group.get('pads', [])) != 16 or not any(bank['available'] for bank in banks):
         raise ValueError('Add at least one sample before exporting.')
+    from .direct import required_synth_pads
+    if any(required_synth_pads(bank) for bank in banks):
+        raise ValueError('Some synth pads have no verified NI preview. Replace those sounds before exporting.')
     if any(bank['unresolved'] for bank in banks) and not allow_unresolved:
         raise ValueError('Replace missing pads or explicitly allow empty positions.')
     kit = group['kit']
@@ -155,6 +158,8 @@ def export_program(group, destination, allow_unresolved=False, progress=None, ca
                 'midi_note': pad_notes(None)[i], 'source': row.get('source'),
                 'original_sha256': hashes.get(i), 'sha256': digest,
                 'status': row['status'], 'replacement': row.get('replacement')})
+            rows[-1].update(preview_preset=row.get('preview_preset'), preview_match=row.get('preview_match'),
+                            empty_reason=row.get('empty_reason'))
         check_sources()
         pgm = folder / (name + '.PGM')
         pgm.write_bytes(program_bytes(names))

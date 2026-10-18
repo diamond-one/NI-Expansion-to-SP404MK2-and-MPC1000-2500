@@ -1,10 +1,10 @@
 # NI to SP & MPC
 
-**[Download the Windows app](https://github.com/diamond-one/NI-Expansion-to-SP404MK2-and-MPC1000-2500/releases/latest)** · Extract the ZIP and open `NI-to-SP-0.15.exe`.
+**[Download the Windows app](https://github.com/diamond-one/NI-Expansion-to-SP404MK2-and-MPC1000-2500/releases/latest)** · Extract the ZIP and open `NI-to-SP-0.16.exe`.
 
 Turn installed Maschine expansion samples into **SP-404MKII kits** or **MPC1000 programs**. Hear sounds, replace pads and build your own kits before exporting.
 
-Maschine and Python do not need to be running. Your original samples stay untouched. Synths, EQ and effects are not rendered.
+Maschine and Python do not need to be running. Your original samples stay untouched. Synth pads use matching NI preview recordings automatically; DrumSynth pads stay empty. Instruments, EQ and effects are not rendered.
 
 ![The kit workshop with a loaded kit, four MPC banks and sound replacement controls](docs/screenshots/main-workspace.png)
 
@@ -121,10 +121,15 @@ Use an empty hardware bank to avoid hearing the SP's existing samples alongside 
 | Control | Use it for |
 | --- | --- |
 | **Hear original NI demo** | Automatically hear the supplied original kit demo when browsing. It does not include your edits. |
-| **NI preview clips** | Fill some unresolved pads with matching NI audition clips. These may be phrases or approximations. Off by default. |
-| **Export missing as empty** | Export an incomplete kit: unassigned MPC pads or silence WAVs for SP positions. Off by default. |
+| **Synth previews: auto** | Matching NI audition clips fill synth pads automatically, including presets renamed inside a kit. These may contain phrases or differ from the kit's processing. |
+| **Export missing as empty** | Allow other unresolved samples to export empty. Synth pads with an identified plug-in still need a verified preview or replacement. Off by default. |
 
-**For a complete kit, replace pads marked Needs sound before exporting.** Deliberately empty pads in your own kit are allowed without enabling **Export missing as empty**.
+**DrumSynth pads export empty automatically**, with their positions preserved. You can fill them with your own samples. Replace any other pads marked **Needs sound** before exporting. Deliberately empty pads in your own kit are also allowed.
+
+For example, London Grit's **Cleancut Kit** finds **Electrocute** for pad 15 and
+**Subutnik** for pad 16. DrumSynth pads 5, 7, 9 and 10 remain empty. Previously
+saved NI banks are upgraded when opened, while manual replacements and deliberately
+cleared pads stay as you left them.
 
 ## Keep your work
 
@@ -139,7 +144,7 @@ Use an empty hardware bank to avoid hearing the SP's existing samples alongside 
 | MPC pads do nothing | Track output **1A**, interface input selected, **MIDI preview ON**. |
 | Wrong MPC pad plays | Choose **MIDI track** or **program pads** to match the track. |
 | Pads respond but you hear nothing | Select the output you are listening through in **Connections**. |
-| A synth or layered pad is missing | Try **NI preview clips** or choose a replacement sample. |
+| A synth or layered pad is missing | Previews are automatic. Choose a replacement if no unique, available preview can be verified. |
 | An expansion is missing | Check **NI Expansions Location**, then press **Rescan**. |
 
 ## Limits and technical details
@@ -157,7 +162,7 @@ Physical MPC MIDI preview has been checked. Loading an exported program on a phy
 - **Conversion:** samples shorter than 100 ms are padded. Resampling or preview-decoding overs are attenuated with shared gain to preserve relative levels. Offline or unsupported files can fail preparation.
 - **Recovery:** working kits are stored under `%LOCALAPPDATA%\NIToSP\working-kits`; SP recovery backups are under `%LOCALAPPDATA%\NIToSP\SP-backups`. Undo history lasts for the session. Save a named kit for long-term use.
 
-At least one usable sound is required in the current SP bank or somewhere in the MPC program. NI preview matching uses exact, unambiguous names; it does not guarantee the original note or processing.
+At least one usable sound is required in the current SP bank or somewhere in the MPC program. NI previews match an unambiguous pad name or the full preset identity stored in the kit and installed preset. Matching stays inside the same expansion. It does not guarantee the original note or processing.
 
 </details>
 
@@ -175,7 +180,7 @@ python run.py
 
 Build with `./build.ps1`; the executable is written to `dist`.
 
-Run tests with `python -m unittest discover -s tests -v`. For packaged checks, use `NI-to-SP-0.15.exe --self-check report.json`. These checks use generated fixtures and do not transfer samples to physical hardware.
+Run tests with `python -m unittest discover -s tests -v`. For packaged checks, use `NI-to-SP-0.16.exe --self-check report.json`. These checks use generated fixtures and do not transfer samples to physical hardware.
 
 </details>
 

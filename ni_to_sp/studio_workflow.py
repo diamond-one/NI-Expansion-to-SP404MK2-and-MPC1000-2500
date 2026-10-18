@@ -44,7 +44,7 @@ class StudioWorkflow:
         self._saved_drafts = {key: value for key, value in names.items() if isinstance(key, str) and isinstance(value, str)} if isinstance(names, dict) else {}
         self._recover_id = self._studio_state.get('current')
         super().__init__()
-        self.title('NI to SP & MPC 0.15 · Kit workshop')
+        self.title('NI to SP & MPC 0.16 · Kit workshop')
         if not self._recover_id and (self.data_dir / 'last-edited-kit.json').is_file():
             try:
                 previous = open_kit(self.data_dir / 'last-edited-kit.json')
@@ -636,7 +636,10 @@ class StudioWorkflow:
         elif self.target_var.get() == 'MPC1000':
             from .mpc_banks import counts
             ready, missing = counts(self.group)
-            self.mpc_button.configure(state='normal' if ready and (not missing or self.silence_var.get()) and not self.busy else 'disabled')
+            from .direct import required_synth_pads
+            from .mpc_banks import all_banks
+            required = any(required_synth_pads(bank) for bank in all_banks(self.group))
+            self.mpc_button.configure(state='normal' if ready and not required and (not missing or self.silence_var.get()) and not self.busy else 'disabled')
         self.refresh_draft_menu()
 
     def open_completed(self, path=None):

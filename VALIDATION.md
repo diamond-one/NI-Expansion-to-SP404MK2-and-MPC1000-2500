@@ -1,6 +1,12 @@
-# Validation — Kit workshop 0.15
+# Validation — Kit workshop 0.16
 
 Verified 18 October 2026.
+
+- Version 0.16 automatically uses NI sound-preset previews for synth pads, including renamed pads whose embedded preset identity matches an installed preset. Confirmed Maschine DrumSynth pads are intentionally empty. An unmatched instrument preview still requires a replacement before export; allowing missing samples as empty does not bypass that check.
+- All 152 regression tests and all 13 packaged checks passed. New coverage includes renamed and ambiguous preset identities, older NI metadata records, unrelated labels, cache refresh, instrument WAV assets, intentional DrumSynth positions in preview/SP/MPC output, saved-bank migration without losing edits, and the workspace export policy.
+- A read-only audit inspected 1,650 installed kits: 1,647 were readable, including 1,028 with no unresolved pads. It found 811 preview pads, including 400 matched through embedded preset identities, and 668 intentional DrumSynth positions. There are still 1,070 unresolved pads across other kits; three kit structures are unsupported. These counts describe this installed collection, not universal NI compatibility.
+- London Grit / Cleancut Kit was exported locally to both targets. NI/MPC pads 15 and 16 use the Electrocute and Subutnik previews. DrumSynth pads 5, 7, 9 and 10 remain empty. SP output preserves all 16 positions using silence at the four empty positions; the MPC program assigns the other 12 pads. No hardware transfer was performed.
+- Native review of the packaged 0.16 app confirmed Cleancut's preview assignments, four DrumSynth labels, enabled MPC export and automatic-preview status in both light and dark themes. Both README workspace images were refreshed from this build.
 
 - Version 0.15 adds a remembered Light/Dark theme button. Colours use paired tokens across workspace and dialogs; the native Tk library list and waveform update explicitly. The switch keeps the loaded group, preview session, audio player and Undo history in place and stays available during background jobs.
 - All 142 regression tests and all 13 packaged checks passed. Added tests cover state preservation, preference persistence, native list colours, availability while busy and text contrast for both palettes.

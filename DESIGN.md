@@ -1,6 +1,12 @@
-# Kit workshop 0.15 design
+# Kit workshop 0.16 design
 
 Native Windows / Python CustomTkinter. Operate mode. The user chose the Punk prototype on 18 October 2026. The real app applies its cut-paper, ink, acid-selection and condensed-title language across the editor, batch page, Connections and SP transfer window.
+
+NI synth previews are automatic. The former opt-in checkbox is a fixed status
+label in the export area; batch export states the same policy. The inspector names
+the matched preset, while confirmed DrumSynth pads explicitly say they are empty.
+Unmatched plug-in previews require replacement rather than silent export. Saved
+banks can gain verified previews without replacing user-assigned or cleared pads.
 
 ## Visual plan and decision
 

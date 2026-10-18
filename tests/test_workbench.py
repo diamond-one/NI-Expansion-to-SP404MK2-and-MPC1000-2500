@@ -13,6 +13,36 @@ from ni_to_sp.kit_editor import MODES
 class WorkbenchTests(unittest.TestCase):
     setUp = fixtures.ConverterTests.setUp
     tearDown = fixtures.ConverterTests.tearDown
+
+    def test_renamed_synth_preview_loads_automatically_in_the_workspace(self):
+        from test_synth_policy import insert_pad, identity, synth_preview
+        insert_pad(self.kit, 14, b'Native Instruments:VST:INSTR:1234\0' + identity('Embedded lead'))
+        synth_preview(self.kit, 'Embedded lead')
+        self.app.kits = [self.kit]
+        self.app.filter_kits()
+        self.app.kit_list.selection_set(0)
+        self.app.select_kit()
+        wait(self.app)
+        self.assertTrue(self.app.use_previews_var.get())
+        self.assertEqual(self.app.group['pads'][14]['preview_preset'], 'Embedded lead')
+        self.assertEqual(self.app.group['unresolved'], [])
+
+    def test_missing_instrument_preview_cannot_be_silenced_through_the_ui(self):
+        from test_synth_policy import insert_pad, identity
+        insert_pad(self.kit, 14, b'Native Instruments:VST:INSTR:1234\0' + identity('Unavailable lead'))
+        self.app.kits = [self.kit]
+        self.app.filter_kits()
+        self.app.kit_list.selection_set(0)
+        self.app.select_kit()
+        wait(self.app)
+        self.app.silence_var.set(True)
+        for target in ('SP-404MKII', 'MPC1000'):
+            self.app.target_var.set(target)
+            self.app.change_target()
+            self.app.update()
+            control = self.app.mpc_button if target == 'MPC1000' else self.app.send_open_button
+            self.assertEqual(control.cget('state'), 'disabled')
+        self.assertIn('synth previews missing', self.app.quality.cget('text'))
     def test_target_switch_preserves_assignments_and_has_one_primary_action(self):
         from ni_to_sp.direct import inspect_group
         source = inspect_group(self.kit)['pads'][0]['source']
