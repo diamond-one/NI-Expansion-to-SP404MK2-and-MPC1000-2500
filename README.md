@@ -1,14 +1,14 @@
-# NI-kit-sieve
+# NI to SP & MPC kit workshop
 
 **Sift through thousands of Native Instruments Maschine drum kits and keep only the ones you want.**
-NI-kit-sieve reads your installed NI expansions, builds ready-to-play 8-pad drum kits from them, lets you hear each
+This app reads your installed NI expansions, builds ready-to-play 8-pad drum kits from them, lets you hear each
 one in seconds, and packs the ones you keep into **MPC1000 programs**.
 
 ![The Make kits tab: a kit loaded on 8 pads, with a green badge showing the kit was saved](docs/screenshots/make-kits.png)
 
 ## What it does
 
-You have many GB of expansions. Auditioning them kit by kit takes forever. NI-kit-sieve does the boring part:
+You have many GB of expansions. Auditioning them kit by kit takes forever. It does the boring part:
 
 1. **Finds the drums** in every kit and arranges them in one fixed layout (below).
 2. **Plays you a short beat** from each kit so you can judge it at once.
@@ -34,8 +34,8 @@ sound from the same expansion (the pad says "from other half").
 You need Windows and Python 3.12.
 
 ```powershell
-git clone https://github.com/diamond-one/NI-kit-sieve.git
-cd NI-kit-sieve
+git clone https://github.com/diamond-one/NI-Expansion-to-SP404MK2-and-MPC1000-2500.git
+cd NI-Expansion-to-SP404MK2-and-MPC1000-2500
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt

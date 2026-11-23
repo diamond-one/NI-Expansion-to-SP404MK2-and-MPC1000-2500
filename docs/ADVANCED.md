@@ -1,4 +1,4 @@
-# NI-kit-sieve — advanced guide
+# NI to SP & MPC kit workshop — advanced guide
 
 The full reference from the earlier "Kit workshop" releases. Start with the [README](../README.md); this page covers
 the Play & export workbench, SP-404 transfer, MIDI preview setup and troubleshooting.
