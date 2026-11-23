@@ -158,20 +158,20 @@ class WorkbenchTests(unittest.TestCase):
         session, player, undo = self.app.session, self.app.player, copy.deepcopy(self.app.undo_history)
         self.app.toggle_theme()
         self.app.update()
-        self.assertEqual(self.app.theme_mode, 'dark')
+        self.assertEqual(self.app.theme_mode, 'light')  # the app starts in the dark panel look
         self.assertEqual(self.app.group, before)
         self.assertIs(self.app.session, session)
         self.assertIs(self.app.player, player)
         self.assertEqual(self.app.undo_history, undo)
-        self.assertEqual(self.app.kit_list.cget('bg').lower(), T.resolve(T.LIBRARY_INSET, 'dark').lower())
+        self.assertEqual(self.app.kit_list.cget('bg').lower(), T.resolve(T.LIBRARY_INSET, 'light').lower())
         state = json.loads((self.app.data_dir / 'studio-session.json').read_text())
-        self.assertEqual(state['theme'], 'dark')
+        self.assertEqual(state['theme'], 'light')
         self.app.busy = True
         self.app.sync()
         self.assertEqual(self.app.theme_button.cget('state'), 'normal')
         self.app.toggle_theme()
         self.app.busy = False
-        self.assertEqual(self.app.theme_mode, 'light')
+        self.assertEqual(self.app.theme_mode, 'dark')
 
     def test_dark_text_contrast(self):
         def luminance(token):

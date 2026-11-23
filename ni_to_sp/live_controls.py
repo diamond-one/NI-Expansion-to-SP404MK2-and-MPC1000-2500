@@ -79,6 +79,11 @@ class LivePreviewMixin:
         self.live_signature = getattr(self, "live_signature", None)
         self.live_failed_signature = getattr(self, "live_failed_signature", None)
 
+    def _live_session(self):
+        """The kit the hardware pads should play: the Make kits tab's current kit, else the editor's."""
+        maker = getattr(self, "km_live_session", None)
+        return (maker() if maker else None) or getattr(self, "session", None)
+
     def _live_current(self, token):
         return (token == self._live_generation and self._live_requested
                 and not getattr(self, "closing", False) and not getattr(self, "_closed", False))
@@ -158,7 +163,7 @@ class LivePreviewMixin:
         self._init_live_controls()
         if getattr(self, "closing", False) or getattr(self, "_closed", False):
             return
-        if not getattr(self, "session", None):
+        if not self._live_session():
             self.set_status("Select a kit before turning MIDI preview on.")
             self.sync_live_controls()
             return
@@ -167,7 +172,7 @@ class LivePreviewMixin:
         self._live_audio_only = audio_only
         token = self._live_generation
         self._live_requested = self._live_connecting = True
-        snapshot, bank = _snapshot(self.session), self.bank
+        snapshot, bank = _snapshot(self._live_session()), self.bank
         signature = self.live_bank_signature()
         settings = copy.deepcopy(self.connection_settings)
         resources = _Resources()
@@ -239,7 +244,7 @@ class LivePreviewMixin:
                         on_error=lambda message: self.events.put(("live_notice", {"token": token, "message": str(message), "source": "midi"})),
                         channel=settings.get("channel"), note_offset=settings.get("noteOffset", 0),
                         profile=settings.get("profile", "sp404_a"), mapping=settings.get("mapping", {}),
-                        mpc_notes=settings.get('mpcPadNotes'))
+                        mpc_notes=settings.get('mpcPadNotes'), controls=settings.get('controls'))
                     resources.controller = controller
                     check()
                     controller.connect()
@@ -262,10 +267,11 @@ class LivePreviewMixin:
         return loaded == desired or (loaded[1] == desired[1] and loaded[3][index] == desired[3][index])
 
     def live_bank_signature(self):
-        if not getattr(self, "session", None):
+        session = self._live_session()
+        if not session:
             return None
-        return (id(self.session), self.bank, self.session.library_revision,
-                tuple(p.sample_id for p in self.session.pads[self.bank * 16:self.bank * 16 + 16]))
+        return (id(session), self.bank, session.library_revision,
+                tuple(p.sample_id for p in session.pads[self.bank * 16:self.bank * 16 + 16]))
 
     def schedule_live_reload(self):
         self._init_live_controls()
@@ -282,14 +288,14 @@ class LivePreviewMixin:
     def reload_live_bank(self):
         self._init_live_controls()
         self._live_reload_after = None
-        if (not self._live_requested or not getattr(self, "session", None) or not _running(self.live_engine)
+        if (not self._live_requested or not self._live_session() or not _running(self.live_engine)
                 or self._live_reload_inflight or getattr(self, "closing", False) or getattr(self, "_closed", False)):
             return
         token, engine = self._live_generation, self.live_engine
         self._live_reload_serial += 1
         serial = self._live_reload_serial
         self._live_reload_inflight = (token, serial)
-        snapshot, bank, signature = _snapshot(self.session), self.bank, self.live_bank_signature()
+        snapshot, bank, signature = _snapshot(self._live_session()), self.bank, self.live_bank_signature()
         self.sync_live_controls()
         def worker():
             try:

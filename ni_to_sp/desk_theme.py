@@ -1,30 +1,41 @@
-"""Punk sampler workspace: paper strips, black ink, acid selection and cut type."""
+"""Groovebox panel: a matte charcoal plate, square keys with a dark bevel, DIN-style caps, lit pads.
+
+Each colour is (light, dark). Dark is the hardware look; light is the same panel in graphite-silver.
+"""
 from pathlib import Path
 import os
 import customtkinter as ctk
 
-HEADER = ('#18171B', '#101013')
-LIBRARY = ('#F6F3E8', '#24242B')
-LIBRARY_INSET = ('#F6F3E8', '#24242B')
-WORKSPACE = ('#E7E5DC', '#19191F')
-PAPER = ('#F6F3E8', '#292930')
-INK = ('#18171B', '#F6F3E8')
-MUTED = ('#53524C', '#C3BFB5')
-ON_DARK = ('#F6F3E8', '#F6F3E8')
-ON_ACTION = ('#E5F26A', '#18171B')
-DARK_MUTED = ('#53524C', '#C3BFB5')
-ACTION = ('#18171B', '#E5F26A')
-ACTION_HOVER = ('#34313C', '#CAD75F')
-LINE = ('#18171B', '#969389')
-SOFT = ('#DDD9CE', '#3A3942')
-SELECTED = ('#E5F26A', '#414B1D')
-NAV_SELECTED = ('#B4A4D0', '#524164')
-MISSING = ('#F2C1BD', '#552B2A')
-MISSING_INK = ('#701E0F', '#FFDAD4')
-PREVIEW = ('#D6CAE9', '#493957')
-PREVIEW_INK = ('#443354', '#EBDAFF')
-EMPTY = ('#DDD9CE', '#34333B')
-FOCUS = ('#624A7A', '#C9AFE8')
+HEADER = ('#2B2B2E', '#141416')            # top strip
+LIBRARY = ('#CBCBD0', '#232326')           # left rail
+LIBRARY_INSET = ('#BDBDC3', '#18181A')     # recessed lists and fields
+WORKSPACE = ('#D6D6DA', '#2A2A2D')         # the plate
+PAPER = ('#EDEDF0', '#35353A')             # key face and raised panels
+INK = ('#1C1C1F', '#E9E9EB')
+MUTED = ('#5A5A62', '#A2A2AA')
+ON_DARK = ('#F0F0F2', '#F0F0F2')
+ON_ACTION = ('#0E1112', '#0E1112')
+DARK_MUTED = ('#46464E', '#A2A2AA')      # muted text on the rail
+HEADER_MUTED = ('#A6A6AE', '#A2A2AA')    # muted text on the always-dark top strip
+ACTION = ('#2FC4BA', '#35D0C6')            # the one lit control colour
+ACTION_HOVER = ('#52D8CF', '#5BE0D7')
+KEY_HOVER = ('#F8F8FA', '#434349')
+DARK_KEY = ('#38383C', '#1E1E21')          # keys on the dark strip and rail
+DARK_KEY_HOVER = ('#48484D', '#2D2D31')
+LINE = ('#9A9AA3', '#0D0D0F')              # key bevel: near-black on the dark plate
+SOFT = ('#DEDEE2', '#2F2F33')
+SELECTED = ('#8DE3DC', '#216F6A')          # a pressed-in, lit-from-within key
+NAV_SELECTED = ('#8DE3DC', '#216F6A')       # the active mode shares the one lit-key colour
+MISSING = ('#F2B5B0', '#4A2325')
+MISSING_INK = ('#7A1F18', '#FFB3AA')
+PREVIEW = ('#D6CAE9', '#3A2F4D')
+PREVIEW_INK = ('#443354', '#E3D4FF')
+EMPTY = ('#CFCFD4', '#26262A')
+FOCUS = ('#1E9E96', '#5BE0D7')
+DISABLED_ON_LIT = ('#1B423F', '#1B423F')    # a disabled key that is still lit teal
+DISABLED_ON_SOFT = ('#6E6E77', '#8E8E97')   # a disabled key that has gone to the soft face
+OLED = ('#0B0C0D', '#050506')              # readout panel
+OLED_INK = ('#EDEFF1', '#EDEFF1')
 _fonts_loaded = False
 
 
@@ -41,6 +52,9 @@ def refresh_native(app):
         highlightbackground=resolve(LINE), highlightcolor=resolve(FOCUS))
     app.waveform.configure(background=resolve(WORKSPACE))
     app.waveform._draw()
+    for pad in getattr(app, 'pad_buttons', {}).values():
+        if hasattr(pad, '_draw'):
+            pad._draw()
 
 
 def load_fonts():
@@ -54,10 +68,28 @@ def load_fonts():
         _fonts_loaded = True
 
 
-def font(size=14, bold=False, display=False):
+_family_cache = {}
+
+
+def family(display=False, mono=False):
+    """Bahnschrift (DIN-style, ships with Windows) when present, else Segoe UI / the system default."""
+    key = (display, mono)
+    if key not in _family_cache:
+        try:
+            import tkinter.font as tkfont
+            names = set(tkfont.families())
+        except Exception:
+            names = set()
+        wanted = (('Cascadia Mono', 'Consolas', 'Courier New') if mono else
+                  ('Bahnschrift SemiCondensed', 'Bahnschrift', 'Segoe UI Semibold', 'Segoe UI') if display else
+                  ('Bahnschrift', 'Segoe UI'))
+        _family_cache[key] = next((n for n in wanted if n in names), wanted[-1])
+    return _family_cache[key]
+
+
+def font(size=14, bold=False, display=False, mono=False):
     load_fonts()
-    return ctk.CTkFont(family='Oswald' if display else 'Segoe UI',
-                      size=size, weight='bold' if bold else 'normal')
+    return ctk.CTkFont(family=family(display, mono), size=size, weight='bold' if bold else 'normal')
 
 
 def label(parent, text='', size=14, color=INK, bold=False, display=False, **kwargs):
@@ -67,18 +99,18 @@ def label(parent, text='', size=14, color=INK, bold=False, display=False, **kwar
 
 
 def button(app, parent, text, command, primary=False, dark=False, **kwargs):
-    settings = dict(height=38, corner_radius=0, border_width=2,
-        border_color=LINE, font=font(14, True),
-        fg_color=ACTION if primary else HEADER if dark else PAPER,
-        hover_color=ACTION_HOVER if primary else '#333333' if dark else SELECTED,
+    """A square matte key; primary is the one lit key, dark is for the strip and rail."""
+    settings = dict(height=38, corner_radius=3, border_width=2,
+        border_color=LINE, font=font(13, True),
+        fg_color=ACTION if primary else DARK_KEY if dark else PAPER,
+        hover_color=ACTION_HOVER if primary else DARK_KEY_HOVER if dark else KEY_HOVER,
         text_color=ON_ACTION if primary else ON_DARK if dark else INK,
-        text_color_disabled='#797A74')
+        text_color_disabled=('#1B423F', '#1B423F') if primary else ('#7A7A83', '#8E8E97'))
     settings.update(kwargs)
     widget = ctk.CTkButton(parent, text=text, command=command, **settings)
     app.controls.append(widget)
     widget._canvas.configure(takefocus=1)
-    widget.bind('<FocusIn>', lambda _: widget.configure(border_width=3,
-        border_color=SELECTED if dark or primary else ACTION))
+    widget.bind('<FocusIn>', lambda _: widget.configure(border_width=2, border_color=FOCUS))
     widget.bind('<FocusOut>', lambda _: widget.configure(border_width=2, border_color=LINE))
     def activate(_):
         widget.invoke()
@@ -98,18 +130,19 @@ class WorkbenchPages(ctk.CTkFrame):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
         self.bar = ctk.CTkFrame(self, fg_color=WORKSPACE, corner_radius=0)
-        self.bar.grid(row=0, column=0, sticky='ew', pady=(12, 16))
+        self.bar.grid(row=0, column=0, sticky='ew', pady=(8, 8))
         self.bar.grid_columnconfigure((0, 1), weight=1, uniform='modes')
 
     def add(self, name):
         index = len(self._name_list)
         self._name_list.append(name)
+        self.bar.grid_columnconfigure(index, weight=1, uniform='modes')
         page = ctk.CTkFrame(self, fg_color=WORKSPACE, corner_radius=0)
         self._pages[name] = page
         button = ctk.CTkButton(self.bar, text=name, command=lambda: self.set(name),
-            height=52, corner_radius=0, border_width=2, border_color=LINE,
-            fg_color=PAPER, hover_color=SELECTED, text_color=INK,
-            font=font(19, True, True))
+            height=36, corner_radius=3, border_width=2, border_color=LINE,
+            fg_color=PAPER, hover_color=KEY_HOVER, text_color=INK,
+            font=font(15, True, True))
         button.grid(row=0, column=index, sticky='ew', padx=(0, 8), pady=0)
         button._canvas.configure(takefocus=1)
         def keyboard(_):
@@ -117,8 +150,8 @@ class WorkbenchPages(ctk.CTkFrame):
             return 'break'
         button.bind('<Return>', keyboard)
         button.bind('<space>', keyboard)
-        button.bind('<FocusIn>', lambda _: button.configure(border_color=ACTION, border_width=3))
-        button.bind('<FocusOut>', lambda _: button.configure(border_color=LINE, border_width=2))
+        button.bind('<FocusIn>', lambda _: button.configure(border_color=FOCUS))
+        button.bind('<FocusOut>', lambda _: button.configure(border_color=LINE))
         self.mode_buttons[name] = button
         if self._current is None:
             self.set(name, notify=False)

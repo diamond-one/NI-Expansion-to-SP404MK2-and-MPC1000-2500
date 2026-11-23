@@ -55,7 +55,7 @@ class LegacyApp(BrowserApp):
             from tkinterdnd2 import TkinterDnD, DND_FILES
             TkinterDnD._require(self)
             for i, button in self.pad_buttons.items():
-                for widget in (button, button._canvas, button._text_label):
+                for widget in {id(w): w for w in (button, button._canvas, button._text_label)}.values():
                     if widget is not None:
                         widget.drop_target_register(DND_FILES)
                         widget.dnd_bind('<<Drop>>', lambda event, index=i: self.drop_sample(index, event.data))
@@ -435,8 +435,9 @@ class LegacyApp(BrowserApp):
 
 
 from .studio_workflow import StudioWorkflow
+from .kitmaker_ui import KitMakerMixin
 
 
-class App(StudioWorkflow, LegacyApp):
+class App(KitMakerMixin, StudioWorkflow, LegacyApp):
     """Musician-facing workflow with shared transfer and connection code."""
     pass

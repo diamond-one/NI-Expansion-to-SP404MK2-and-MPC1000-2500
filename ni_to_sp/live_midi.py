@@ -13,6 +13,7 @@ import importlib
 import json
 import os
 from pathlib import Path
+import re
 import tempfile
 import threading
 
@@ -27,6 +28,7 @@ DEFAULT_SETTINGS = {
     "noteOffset": 0,
     "profile": "sp404_a",
     "mapping": {},
+    "controls": {},
     "cliPath": "",
     "port": "",
 }
@@ -104,6 +106,27 @@ def normalise_mapping(mapping):
             for key, pad in mapping.items()}
 
 
+CONTROL_KEY = re.compile(r"^(note|cc):(\*|[1-9]|1[0-6]):(\d{1,3})$")
+
+
+def normalise_controls(controls):
+    """action -> "note:CH:N" or "cc:CH:N" (CH is 1-16 or * for any channel); each key drives one action."""
+    if controls is None:
+        return {}
+    if not isinstance(controls, dict):
+        raise ValueError("The learned MIDI controls must be an object.")
+    result, used = {}, set()
+    for action, key in controls.items():
+        match = CONTROL_KEY.match(key) if isinstance(key, str) else None
+        if not isinstance(action, str) or not action or len(action) > 32 or not match or int(match.group(3)) > 127:
+            raise ValueError("A learned MIDI control must be an action name and a note or CC such as note:*:49.")
+        if key in used:
+            raise ValueError("Two actions cannot share one MIDI note or CC.")
+        used.add(key)
+        result[action] = key
+    return result
+
+
 def _normalise_settings(settings):
     if not isinstance(settings, dict):
         raise ValueError("Device settings must be an object.")
@@ -116,6 +139,7 @@ def _normalise_settings(settings):
     result["channel"] = _channel(result["channel"])
     result["noteOffset"] = _integer(result["noteOffset"], "Note offset", -127, 127)
     result["mapping"] = normalise_mapping(result["mapping"])
+    result["controls"] = normalise_controls(result.get("controls"))
     result['mpcPadNotes'] = normalise_mpc_notes(result.get('mpcPadNotes'))
     if result["profile"] not in PROFILES:
         raise ValueError("Unknown MIDI pad profile.")
@@ -203,7 +227,7 @@ class MIDIController:
     """
     def __init__(self, input_name, on_pad, on_event=lambda event: None,
                  on_error=lambda message: None, channel=None, note_offset=0,
-                 profile="sp404_a", mapping=None, mpc_notes=None):
+                 profile="sp404_a", mapping=None, mpc_notes=None, controls=None):
         self.input_name = str(input_name or "")
         self.on_pad, self.on_event, self.on_error = on_pad, on_event, on_error
         self.channel = _channel(channel)
@@ -219,6 +243,9 @@ class MIDIController:
         self._generation = 0
         self._learn_index = None
         self._learn_any_channel = False
+        self._controls = normalise_controls(controls)
+        self._learn_control = None
+        self._cc_down = set()
         self._lock = threading.RLock()
 
     @property
@@ -247,6 +274,35 @@ class MIDIController:
             # Hardware banks are input aliases for the visible sixteen pads.
             # Never reject a physical bank just because the editor bank differs.
             self._mpc_bank = bank
+
+    @property
+    def controls(self):
+        with self._lock:
+            return dict(self._controls)
+
+    def set_controls(self, value):
+        value = normalise_controls(value)
+        with self._lock:
+            self._controls = value
+
+    @property
+    def learning_control(self):
+        with self._lock:
+            return self._learn_control
+
+    def learn_control(self, action):
+        """Bind the next pad hit, note or CC button press to an app action (it then no longer plays a pad)."""
+        if not isinstance(action, str) or not action:
+            raise ValueError("Choose an action to learn.")
+        with self._lock:
+            self._learn_control, self._learn_index = action, None
+        self._event({"type": "learning_control", "action": action})
+
+    def cancel_learn_control(self):
+        with self._lock:
+            action, self._learn_control = self._learn_control, None
+        if action is not None:
+            self._event({"type": "learn_control_cancelled", "action": action})
 
     @property
     def learning(self):
@@ -322,7 +378,7 @@ class MIDIController:
         """
         index = _integer(index, "Logical pad", 0, 15)
         with self._lock:
-            self._learn_index = index
+            self._learn_index, self._learn_control = index, None
             self._learn_any_channel = self.channel is None if any_channel is None else bool(any_channel)
         self._event({"type": "learning", "pad": index})
 
@@ -333,7 +389,51 @@ class MIDIController:
         if index is not None:
             self._event({"type": "learn_cancelled", "pad": index})
 
+    def _control_event(self, kind, channel, number, wildcard):
+        """Under the lock: bind a pending control learn, or look the input up. Returns an event or None."""
+        key = f"{kind}:{'*' if wildcard else channel}:{number}"
+        if self._learn_control is not None:
+            action, self._learn_control = self._learn_control, None
+            self._controls = {name: value for name, value in self._controls.items()
+                              if name != action and value != key and value != f"{kind}:*:{number}"
+                              and value != f"{kind}:{channel}:{number}"}
+            self._controls[action] = key
+            return {"type": "control_learned", "action": action, "channel": channel, "number": number,
+                    "kind": kind, "controls": dict(self._controls)}
+        for name, value in self._controls.items():
+            if value in (f"{kind}:{channel}:{number}", f"{kind}:*:{number}"):
+                return {"type": "control", "action": name, "channel": channel, "number": number, "kind": kind}
+        return None
+
+    def _receive_cc(self, message, generation):
+        number = _integer(getattr(message, "control", -1), "MIDI CC", 0, 127)
+        value = _integer(getattr(message, "value", 0), "CC value", 0, 127)
+        channel = _integer(getattr(message, "channel", -1), "Incoming MIDI channel", 0, 15) + 1
+        with self._lock:
+            if not self._active or generation != self._generation:
+                return
+            if self.channel is not None and self.channel != channel:
+                return
+            down = (channel, number)
+            if value < 64:                      # a button release, or a knob below half: re-arm, do nothing
+                self._cc_down.discard(down)
+                return
+            if down in self._cc_down:           # a held knob must not fire again and again
+                return
+            event = (None if self._learn_index is not None
+                     else self._control_event("cc", channel, number, self.channel is None))
+            if event is not None:
+                self._cc_down.add(down)
+        if event is not None:
+            self._event(event)
+
     def _receive(self, message, generation):
+        if getattr(message, "type", None) == "control_change":
+            try:
+                self._receive_cc(message, generation)
+            except Exception as exc:
+                self._error(f"Could not handle MIDI input: {exc}")
+            return
         if getattr(message, "type", None) != "note_on":
             return
         try:
@@ -350,7 +450,12 @@ class MIDIController:
                         return
                 elif self.channel != channel:
                     return
-                if self._learn_index is not None:
+                control = (None if self._learn_index is not None
+                           else self._control_event("note", channel, note, self.channel is None))
+                if control is not None:
+                    pad, learned = None, True      # a control press never plays a pad and is never a pad binding
+                    event = control
+                elif self._learn_index is not None:
                     pad = self._learn_index
                     key = f"{'*' if self._learn_any_channel else channel}:{note}"
                     self._mapping = {existing: value for existing, value in self._mapping.items()

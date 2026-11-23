@@ -62,6 +62,8 @@ def assign(group, index, path, provenance=None):
     replacement.update(ni_pad=index + 1, sp_pad=sp_pad_number(index),
         original_name=old.get('original_name', old['name']), references=[],
         replacement=provenance or {'method': 'chosen_file'})
+    if old.get('locked'):
+        replacement['locked'] = True  # a manual replacement keeps the pad locked
     group['pads'][index] = replacement
     return refresh(group)
 
@@ -193,7 +195,17 @@ class ExpansionPool:
                     except (OSError, ValueError, RuntimeError):
                         continue
         results.pop(group['pads'][index].get('source'), None)
-        return results
+        return self._prefer_kind(results, group['pads'][index], mode)
+
+    @staticmethod
+    def _prefer_kind(results, pad, mode):
+        """Offer only sounds of the pad's own type when it is known (and any exist)."""
+        if mode >= 2:
+            return results
+        from .autofill import family_of_path, pad_target_kind
+        kind = pad_target_kind(pad)
+        matching = {path: row for path, row in results.items() if family_of_path(path) == kind} if kind else {}
+        return matching or results
 
     def choose(self, kits, group, index, mode, pack=None, cancel=None, progress=None, excluded=()):
         choices = self.candidates(kits, group, index, mode, pack, cancel, progress)

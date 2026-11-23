@@ -90,10 +90,13 @@ def self_check(report_path):
             prepared, session = prepare_direct(direct, root / 'direct-prepared')
             assert len(load_prepared(prepared)[0].pads) == 16
             from .converter_ui import App as Browser
-            with patch.dict(os.environ, {'NI_TO_SP_DATA_DIR': str(root / 'browser-data')}), patch.object(Browser, 'scan', lambda _: None):
+            with patch.dict(os.environ, {'NI_TO_SP_DATA_DIR': str(root / 'browser-data'), 'NI_TO_SP_KITMAKER_AUTOSTART': '0',
+                                         'NI_KITMAKER_DIR': str(root / 'kitmaker')}), patch.object(Browser, 'scan', lambda _: None):
                 browser = Browser()
             try:
                 browser.geometry('1120x800+10000+10000')
+                assert browser.tabs.get() == 'Make kits'          # the kit maker is the first screen
+                browser.tabs.set('Play & export')
                 browser.kit, browser.group, browser.session = kits[0], direct, preview_session(direct)
                 browser.show_group()
                 browser.update()
@@ -101,7 +104,7 @@ def self_check(report_path):
                 assert browser.send_open_button.cget('state') == 'normal'
                 assert browser.prepared is None
                 assert browser.drop_available, getattr(browser, 'drop_error', '')
-                assert browser.tabs._name_list == ['Play & export', 'Batch export']
+                assert browser.tabs._name_list == ['Make kits', 'Play & export', 'Batch export']
                 assert browser.mpc_button.cget('state') == 'normal'
                 import tkinter.font
                 assert 'Space Grotesk' in tkinter.font.families(browser)

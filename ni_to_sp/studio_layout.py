@@ -9,13 +9,15 @@ from .direct import usable, required_synth_pads
 from .kit_editor import MODES, ExpansionPool
 from .live_midi import load_settings
 from .waveform import Waveform
+from .pad_widget import PadButton
+from . import pad_look as L
 
 
 def build(app):
     app._desk_ready = False
-    app.theme_mode = app._studio_state.get('theme', 'light')
+    app.theme_mode = app._studio_state.get('theme', 'dark')
     if app.theme_mode not in ('light', 'dark'):
-        app.theme_mode = 'light'
+        app.theme_mode = 'dark'
     ctk.set_appearance_mode(app.theme_mode)
     app.ui_warning_color = T.MISSING_INK
     app.configure(fg_color=T.WORKSPACE)
@@ -33,10 +35,13 @@ def build(app):
     head = ctk.CTkFrame(app, fg_color=T.HEADER, corner_radius=0)
     head.grid(row=0, column=0, columnspan=2, sticky='ew')
     head.grid_columnconfigure(1, weight=1)
-    app.brand_label = T.label(head, 'Kit workshop', 27, T.INK, True, True,
-        fg_color=T.SELECTED, corner_radius=0, padx=12, pady=2)
-    app.brand_label.grid(row=0, column=0, padx=18, pady=12)
+    brand = ctk.CTkFrame(head, fg_color='transparent')
+    brand.grid(row=0, column=0, padx=(18, 10), pady=6)
+    app.brand_label = T.label(brand, 'KIT WORKSHOP', 22, T.ON_DARK, True, True, anchor='w')
+    app.brand_label.pack(anchor='w')
+    T.label(brand, 'NI TO SP & MPC', 11, T.HEADER_MUTED, anchor='w').pack(anchor='w')
     files = ctk.CTkFrame(head, fg_color='transparent')
+    app.head_files = files
     files.grid(row=0, column=1, sticky='w', padx=10)
     app.new_button = T.button(app, files, 'New kit', app.new_empty, dark=True, width=84)
     app.new_button.pack(side='left', padx=3)
@@ -58,10 +63,11 @@ def build(app):
     app.live_colors = {'on': T.SELECTED, 'pending': T.SOFT, 'off': T.HEADER, 'dark': T.INK, 'text': T.ON_DARK}
 
     library = ctk.CTkFrame(app, fg_color=T.LIBRARY, corner_radius=0, border_width=2, border_color=T.LINE)
+    app.library_frame = library
     library.grid(row=1, column=0, sticky='nsew')
     library.grid_columnconfigure(0, weight=1)
     library.grid_rowconfigure(6, weight=1)
-    T.label(library, 'Sound library', 21, T.INK, True, True).grid(row=0, column=0, sticky='w', padx=16, pady=(16, 10))
+    T.label(library, 'SOUND LIBRARY', 16, T.INK, True, True).grid(row=0, column=0, sticky='w', padx=16, pady=(16, 10))
     app.search_var = tk.StringVar()
     search_field = ctk.CTkFrame(library, fg_color='transparent')
     search_field.grid(row=2, column=0, sticky='ew', padx=12, pady=(0, 8))
@@ -90,7 +96,7 @@ def build(app):
     listing.grid_columnconfigure(0, weight=1)
     listing.grid_rowconfigure(0, weight=1)
     app.kit_list = tk.Listbox(listing, bg=T.resolve(T.LIBRARY_INSET), fg=T.resolve(T.INK), selectbackground=T.resolve(T.SELECTED),
-        selectforeground=T.resolve(T.INK), font=('Segoe UI', 11), width=24, relief='flat', highlightthickness=2,
+        selectforeground=T.resolve(T.INK), font=(T.family(), 11), width=24, relief='flat', highlightthickness=2,
         highlightbackground=T.resolve(T.LINE), highlightcolor=T.resolve(T.FOCUS), exportselection=False, activestyle='none')
     app.kit_list.grid(row=0, column=0, sticky='nsew')
     scrollbar = ctk.CTkScrollbar(listing, command=app.kit_list.yview, fg_color=T.LIBRARY_INSET, button_color=T.LINE)
@@ -126,20 +132,28 @@ def build(app):
 
     app.tabs = T.WorkbenchPages(app, command=app.sync)
     app.tabs.grid(row=1, column=1, sticky='nsew', padx=(10, 14), pady=(0, 0))
+    make = app.tabs.add('Make kits')
     play, batch = app.tabs.add('Play & export'), app.tabs.add('Batch export')
+    from .kitmaker_ui import build_page
+    build_page(app, make)
     play.grid_columnconfigure(0, weight=1)
     play.grid_rowconfigure(2, weight=1)
     title = ctk.CTkFrame(play, fg_color='transparent')
     title.grid(row=0, column=0, sticky='ew', pady=(2, 4))
     title.grid_columnconfigure(0, weight=1)
-    app.kit_title = T.label(title, 'Untitled kit', 30, T.ON_DARK, True, True,
-        fg_color=T.HEADER, corner_radius=0, padx=12, pady=3, anchor='w')
-    app.kit_title.grid(row=0, column=0, sticky='w')
-    T.button(app, title, 'Rename', app.rename_kit, width=78).grid(row=0, column=1, padx=(8, 0))
+    # The readout: kit name, and below it the pad you are on (like a hardware display's second line).
+    oled = ctk.CTkFrame(title, fg_color=T.OLED, corner_radius=3)
+    oled.grid(row=0, column=0, sticky='w')
+    app.kit_title = ctk.CTkLabel(oled, text='Untitled kit', font=T.font(20, True, mono=True), text_color=T.OLED_INK,
+        fg_color=T.OLED, corner_radius=0, padx=14, pady=0, anchor='w', height=28)
+    app.kit_title.pack(anchor='w', pady=(7, 0))
+    app.oled_detail = ctk.CTkLabel(oled, text='', font=T.font(11, mono=True), text_color=('#A9AFB6', '#A9AFB6'),
+        fg_color=T.OLED, corner_radius=0, padx=14, pady=0, anchor='w', height=18)
+    app.oled_detail.pack(anchor='w', pady=(0, 7))
+    T.button(app, title, 'Rename', app.rename_kit, width=78).grid(row=0, column=1, padx=(8, 0), sticky='n')
+    # Their text now lives in the readout; the widgets stay so existing code can keep updating them.
     app.draft_status = T.label(title, 'New kit', 12, T.MUTED, anchor='w')
-    app.draft_status.grid(row=1, column=0, sticky='ew')
     app.kit_subtitle = T.label(title, '', 12, T.MUTED, anchor='w')
-    app.kit_subtitle.grid(row=1, column=1, sticky='e')
     drafts = ctk.CTkFrame(play, fg_color='transparent')
     drafts.grid(row=1, column=0, sticky='ew', pady=(0, 10))
     app.draft_menu = ctk.CTkOptionMenu(drafts, values=['Session kits'], command=app.choose_draft,
@@ -183,12 +197,9 @@ def build(app):
         for c in range(4):
             grid.grid_columnconfigure(c, weight=1, uniform='pads')
             i = (3 - r) * 4 + c
-            pad = ctk.CTkButton(grid, text='', command=lambda n=i: app.preview_pad(n), width=82, height=64,
-                corner_radius=0, fg_color=T.PAPER, text_color=T.INK, hover_color=T.SOFT,
-                border_color=T.LINE, border_width=2, font=T.font(13, True))
-            pad.grid(row=r, column=c, sticky='nsew', padx=3, pady=3)
+            pad = PadButton(grid, command=lambda n=i: app.preview_pad(n), width=82, height=64)
+            pad.grid(row=r, column=c, sticky='nsew', padx=6, pady=6)
             pad._canvas.configure(takefocus=1)
-            pad.bind('<Button-3>', lambda event, n=i: app.pad_menu(event, n))
             pad.bind('<FocusIn>', lambda event, n=i: app.focus_pad(n))
             for key, delta in (('Left', -1), ('Right', 1), ('Up', 4), ('Down', -4)):
                 pad.bind('<' + key + '>', lambda event, n=i, d=delta: app.move_pad(n, d))
@@ -197,6 +208,12 @@ def build(app):
             app.pad_buttons[i] = pad
     T.label(pads, 'Click to play · arrows to select · Space to hear · drop a sound onto any pad', 12,
         T.MUTED, wraplength=450, justify='left', anchor='w').grid(row=3, column=0, sticky='ew', pady=(5, 0))
+    # Bound on the window, not on each button: a pad's caption label is created after the
+    # button is, so bindings made on the button never reach it and right-clicks on the
+    # caption (most of the pad) were ignored.
+    app.bind('<Button-3>', app.on_right_click, add='+')
+    for key in ('1', 'l', 'L'):
+        app.bind('<KeyPress-' + key + '>', app.key_swap if key == '1' else app.key_lock, add='+')
 
     inspector = ctk.CTkScrollableFrame(body, fg_color=T.PAPER, corner_radius=0, width=278, border_width=2, border_color=T.LINE, scrollbar_button_color=T.LINE, scrollbar_button_hover_color=T.ACTION)
     inspector.grid(row=0, column=1, sticky='nsew')
@@ -208,7 +225,7 @@ def build(app):
     app.waveform = Waveform(pads)
     app.waveform.grid(row=2, column=0, sticky='ew', padx=3, pady=(10, 0))
     transport = ctk.CTkFrame(inspector, fg_color='transparent')
-    transport.grid(row=3, column=0, sticky='ew', padx=12)
+    transport.grid(row=2, column=0, sticky='ew', padx=12, pady=(8, 0))
     app.hear_button = T.button(app, transport, 'Hear pad', lambda: app.preview_pad(app.selected_pad), width=126)
     app.hear_button.pack(side='left')
     app.controls.remove(app.hear_button)
@@ -259,6 +276,12 @@ def build(app):
     app.clear_button.pack(side='right')
     app.source_label = T.label(inspector, '', 11, T.MUTED, wraplength=266, justify='left', anchor='w')
     app.source_label.grid(row=13, column=0, sticky='ew', padx=12, pady=(0, 8))
+    keep = ctk.CTkFrame(inspector, fg_color='transparent')
+    keep.grid(row=3, column=0, sticky='ew', padx=12, pady=(6, 0))
+    app.lock_button = T.button(app, keep, 'Lock pad (L)', app.toggle_lock, width=126)
+    app.lock_button.pack(side='left')
+    app.swap_button = T.button(app, keep, 'Swap unlocked (1)', app.swap_unlocked, primary=True, width=126)
+    app.swap_button.pack(side='right')
     # Advanced actions also remain available in each pad's context menu.
     app.report_button = T.button(app, inspector, 'Source details', app.show_check_report, width=100)
     app.learn_button = T.button(app, inspector, 'Learn MIDI pad', lambda: app.learn_pad(app.selected_pad), width=100)
@@ -293,6 +316,8 @@ def build(app):
     app.next_missing_button = T.button(app, options, 'Next missing pad', app.next_missing, width=137)
     app.next_missing_button.pack(side='right', padx=6)
     T.button(app, options, 'Fill empty pads…', app.fill_empty_pads, width=137).pack(side='right', padx=6)
+    app.auto_fill_button = T.button(app, options, 'Auto-fill unresolved', app.auto_fill_pads, width=137)
+    app.auto_fill_button.pack(side='right', padx=6)
 
     batch.grid_columnconfigure(0, weight=1)
     batch.grid_rowconfigure(0, weight=1)
@@ -437,26 +462,42 @@ def show_group(app):
         trial = bool(app._candidate and i == app.selected_pad)
         shown = app.display_row() if trial else row
         name = shown['name']
-        width = max(10, min(22, app.pad_buttons[i].winfo_width() // 8))
+        width = max(10, min(24, app.pad_buttons[i].winfo_width() // 7))
         lines = textwrap.wrap(name, width=width, break_long_words=True) or ['Empty']
         name = '\n'.join(lines[:2]) + ('…' if len(lines) > 2 else '')
         number = f'{bank}{i + 1:02d}' if mpc else f'SP {row["sp_pad"]:02d}'
         state = 'Trying sound' if trial else 'Needs sound' if not usable(row) and row['status'] != 'empty' else 'DrumSynth · empty' if row.get('empty_reason') == 'drumsynth' else 'Drop sound' if row['status'] == 'empty' else 'NI preview' if row['status'] == 'preview' else ''
-        color = T.MISSING if not usable(shown) and shown['status'] != 'empty' else T.SELECTED if i == app.selected_pad else T.EMPTY if shown['status'] == 'empty' else T.PAPER
+        locked = bool(row.get('locked'))
+        if locked:
+            state = 'Locked' + (' · ' + state if state else '')
+        needs_sound = not usable(shown) and shown['status'] != 'empty'
         compact = app.pad_buttons[i].winfo_height() < 70
         # Two lines at small sizes; full identity and status stay in the inspector.
         if compact:
-            marker = 'trying' if trial else 'missing' if not usable(shown) and shown['status'] != 'empty' else 'preview' if shown['status'] == 'preview' else ''
+            marker = 'trying' if trial else 'missing' if needs_sound else 'preview' if shown['status'] == 'preview' else ''
+            if locked:
+                marker = 'locked' + (' · ' + marker if marker else '')
             caption = number + (' · ' + marker if marker else '')
-            caption += '\n' + ('Drop a sound' if shown['status'] == 'empty' else lines[0] + ('…' if len(lines) > 1 else ''))
+            fit = max(8, app.pad_buttons[i].winfo_width() // 7)
+            full = shown['name']
+            caption += '\n' + ('Drop a sound' if shown['status'] == 'empty' else full if len(full) <= fit else full[:fit - 1].rstrip() + '…')
         else:
             caption = None
         if not compact and state and len(lines) > 1:
             name = lines[0].rstrip('…') + '…'
-        app.pad_buttons[i].configure(text=caption if compact else number + '\n' + name + ('\n' + state if state else ''), fg_color=color,
-            text_color=T.MISSING_INK if color == T.MISSING else T.INK,
-            border_width=3 if i == app.selected_pad else 2, border_color=T.FOCUS if i == app.selected_pad else T.LINE)
+        from .autofill import pad_target_kind
+        kind = pad_target_kind(shown)
+        selected = i == app.selected_pad
+        unlit = needs_sound or shown['status'] == 'empty'
+        glow = '#B8453C' if needs_sound else L.pad_colour(kind, shown['name']) if not unlit else L.pad_colour(kind) if kind else L.STEEL
+        app.pad_buttons[i].configure(text=caption if compact else number + '\n' + name + ('\n' + state if state else ''),
+            glow=glow, unlit=unlit, tag='' if compact or unlit else L.tag_for(kind), locked=locked,
+            state_text='' if compact else state, text_color=None,
+            border_width=3 if selected else 2, border_color='#FFFFFF' if selected else ('#E0564B' if needs_sound else None),
+            flash=False)
     row = app.display_row()
+    here = f'{bank}{app.selected_pad + 1:02d}' if mpc else f'SP {row["sp_pad"]:02d}'
+    app.oled_detail.configure(text=(f'{here} \u00b7 {row["name"]}')[:54] + ('  \u00b7  edited' if app._dirty else ''))
     app.selected_label.configure(text=(f'Pad {bank}{app.selected_pad + 1:02d}' if mpc else f'Pad SP {row["sp_pad"]:02d}') +
                                  (' · original' if app._candidate and app._comparison_original else ' · candidate' if app._candidate else ''))
     app.sound_name_label.configure(text=row['name'])
@@ -466,6 +507,10 @@ def show_group(app):
         else 'NI preset preview: ' + row.get('preview_preset', row['name']) + '. May contain a phrase.' if row['status'] == 'preview'
         else 'Original sound' if app._comparison_original else 'Try this sound before keeping it.' if app._candidate
         else 'Replacement sound' if row.get('replacement') else 'Original kit sample'))
+    pad_locked = bool(app.group['pads'][app.selected_pad].get('locked'))
+    if pad_locked:
+        app.pad_state_label.configure(text=app.pad_state_label.cget('text') + '\nLocked: Swap unlocked and Auto-fill leave this pad alone.')
+    app.lock_button.configure(text='Unlock pad (L)' if pad_locked else 'Lock pad (L)')
     app.waveform.set_source(row)
     source = Path(row['source']).name if row.get('source') else 'Drop a sound here or choose a file.'
     if row.get('replacement', {}).get('kit'):
@@ -481,6 +526,21 @@ def show_group(app):
 def sync(app):
     if not getattr(app, '_desk_ready', False):
         return
+    making = app.tabs.get() == 'Make kits'
+    if hasattr(app, 'library_frame') and making != getattr(app, '_making_layout', None):
+        # Making kits has its own screen: the editor's library rail and file keys would only get in the way.
+        app._making_layout = making
+        if making:
+            app.library_frame.grid_remove()
+            app.head_files.grid_remove()
+            app.tabs.grid_configure(column=0, columnspan=2, padx=(14, 14))
+        else:
+            app.library_frame.grid()
+            app.head_files.grid()
+            app.tabs.grid_configure(column=1, columnspan=1, padx=(10, 14))
+        app.schedule_live_reload()                 # the hardware pads follow whichever tab's kit is showing
+    if hasattr(app, 'km') and app.tabs.get() == 'Make kits':
+        app.km_start()
     group = app.group
     missing = len(group['unresolved']) if group else 0
     candidate = bool(app._candidate)
@@ -499,7 +559,8 @@ def sync(app):
     app.previous_button.configure(state='normal' if app._candidate_positions.get(app.selected_pad, -1) > 0 and not app._candidate_loading and not app.busy else 'disabled')
     for button in (app.keep_button, app.discard_button):
         button.configure(state='normal' if candidate and not app.busy else 'disabled')
-    app.keep_button.configure(fg_color=T.ACTION if candidate else T.SOFT, text_color=T.ON_ACTION if candidate else T.MUTED)
+    app.keep_button.configure(fg_color=T.ACTION if candidate else T.SOFT, text_color=T.ON_ACTION if candidate else T.MUTED,
+                              text_color_disabled=T.DISABLED_ON_LIT if candidate else T.DISABLED_ON_SOFT)
     app.compare_button.configure(state='normal' if candidate and not app.busy else 'disabled',
         text='Hear candidate' if app._comparison_original else 'Compare original')
     app.quality.configure(text=('Keep or discard the candidate before exporting.' if candidate else
@@ -516,8 +577,10 @@ def sync(app):
         app.send_open_button.grid()
         if not app.export_button.winfo_manager():
             app.export_button.pack(side='right', before=app.next_missing_button)
-    app.mpc_button.configure(fg_color=T.ACTION if ready and not candidate and not required and (not missing or app.silence_var.get()) else T.SOFT, text_color=T.ON_ACTION if ready and not candidate and not required and (not missing or app.silence_var.get()) else T.MUTED)
-    app.send_open_button.configure(fg_color=T.ACTION if ready and not candidate and not required and (not missing or app.silence_var.get()) else T.SOFT, text_color=T.ON_ACTION if ready and not candidate and not required and (not missing or app.silence_var.get()) else T.MUTED)
+    app.mpc_button.configure(fg_color=T.ACTION if ready and not candidate and not required and (not missing or app.silence_var.get()) else T.SOFT, text_color=T.ON_ACTION if ready and not candidate and not required and (not missing or app.silence_var.get()) else T.MUTED,
+                             text_color_disabled=T.DISABLED_ON_LIT if ready and not candidate and not required and (not missing or app.silence_var.get()) else T.DISABLED_ON_SOFT)
+    app.send_open_button.configure(fg_color=T.ACTION if ready and not candidate and not required and (not missing or app.silence_var.get()) else T.SOFT, text_color=T.ON_ACTION if ready and not candidate and not required and (not missing or app.silence_var.get()) else T.MUTED,
+                                   text_color_disabled=T.DISABLED_ON_LIT if ready and not candidate and not required and (not missing or app.silence_var.get()) else T.DISABLED_ON_SOFT)
     if required:
         for action in (app.mpc_button, app.send_open_button, app.export_button):
             action.configure(state='disabled')

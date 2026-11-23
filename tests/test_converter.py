@@ -16,10 +16,11 @@ class ConverterTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
         self.kit = direct_fixture(self.root, missing=(14,))
-        self.env = patch.dict(os.environ, {'NI_TO_SP_DATA_DIR': str(self.root / 'data'), 'NI_TO_SP_DISABLE_AUDIO': '1'})
+        self.env = patch.dict(os.environ, {'NI_TO_SP_DATA_DIR': str(self.root / 'data'), 'NI_TO_SP_DISABLE_AUDIO': '1', 'NI_TO_SP_KITMAKER_AUTOSTART': '0'})
         self.env.start()
         with patch.object(App, 'scan', lambda _: None):
             self.app = App()
+        self.app.tabs.set('Play & export')   # these tests drive the editor, not the Make kits tab
         self.app.geometry('1120x800+10000+10000')
         self.app.update()
 
@@ -30,7 +31,7 @@ class ConverterTests(unittest.TestCase):
 
     def test_starts_empty_and_has_no_recording_tab(self):
         self.assertEqual(self.app.group['available'], 0)
-        self.assertEqual(self.app.tabs._name_list, ['Play & export', 'Batch export'])
+        self.assertEqual(self.app.tabs._name_list, ['Make kits', 'Play & export', 'Batch export'])
         self.assertEqual(self.app.mpc_button.cget('state'), 'disabled')
         self.assertTrue(self.app.drop_available, getattr(self.app, 'drop_error', ''))
         self.assertEqual(self.app.group['unresolved'], [])

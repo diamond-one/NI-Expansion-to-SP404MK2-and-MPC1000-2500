@@ -28,6 +28,7 @@ VERSION = 4
 MAX_GROUP_BYTES = 32 * 1024 ** 2
 MAX_AUDIO_SECONDS = 120
 AUDIO_STATUSES = frozenset({'sample', 'preview'})
+ENGINE_KINDS = {'kick': 'kick', 'snare': 'snare', 'hihat': 'hat', 'perc': 'perc', 'clap': 'clap', 'tom': 'perc', 'cymbal': 'cymbal'}
 DRUMSYNTH_ENGINES = frozenset({'Kick', 'Snare', 'Hihat', 'HiHat', 'Perc', 'Clap', 'Tom', 'Cymbal'})
 
 
@@ -280,6 +281,9 @@ def inspect_group(kit, cancel=None, use_previews=True):
         if drumsynth:
             pad.update(status='empty', empty_reason='drumsynth', engine='Maschine DrumSynth',
                        original_status='needs_render')
+            engine_kind = next((ENGINE_KINDS[e.casefold()] for e in sorted(engines) if e.casefold() in ENGINE_KINDS), None)
+            if engine_kind:
+                pad['engine_kind'] = engine_kind
         elif pad['requires_preview'] and pad['status'] == 'sample':
             # A plug-in's embedded WAV reference may be an oscillator or an
             # effect asset, rather than a rendered note from the instrument.

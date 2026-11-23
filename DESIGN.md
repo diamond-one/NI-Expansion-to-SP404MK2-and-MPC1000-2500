@@ -8,21 +8,77 @@ the matched preset, while confirmed DrumSynth pads explicitly say they are empty
 Unmatched plug-in previews require replacement rather than silent export. Saved
 banks can gain verified previews without replacing user-assigned or cleared pads.
 
-## Visual plan and decision
+## Art direction: the groovebox panel
 
-Light and dark are paired versions of this interface. The top-bar theme button
-switches all live controls in place; the library list and waveform follow the
-same palette. Dark mode uses charcoal surfaces, warm light text, subdued selected
-pad fills and acid primary actions. The saved choice is independent of kits and
-never rebuilds the player, library or bank state.
+Premise: the workshop is the top panel of a hardware sampler, not a form. One matte
+charcoal plate carries everything and the sounds are the light source. Reference: a
+modern pad controller (matte keys with a dark bevel, small caps labels with a dimmer
+second line, an OLED readout, a 4x4 grid of glowing pads). The anatomy is borrowed;
+nothing is traced.
 
-Paper #F6F3E8, ink #18171B, canvas #E7E5DC, acid selection #E5F26A, lavender mode selection #B4A4D0 and warning #F2C1BD. Heavy black rules and square paper panels keep the workspace direct. The masthead is an acid paper strip; kit names sit on an ink label. Primary actions use acid lettering on ink. Selected pads use acid with an outline; missing states retain explicit text. No raster textures or fake distressed controls obscure sound names.
+Plate and keys. Charcoal plate (#2A2A2D, deeper #141416 header and #18181A insets);
+keys are square matte faces (#35353A) with a near-black bevel border and a lighter face
+on hover. Text is #E9E9EB with a #8E8E95 secondary line. The one lit control colour is
+teal (#35D0C6) and is used only for the primary action and focus. A light variant
+(graphite-silver plate, dark ink) follows the same structure and is the Theme toggle.
 
-Oswald is bundled locally for headings and mode titles, with its SIL Open Font Licence. Segoe UI carries dense sound names and controls. Space Grotesk is retained for compatibility with earlier resources. Type steps are 12 / 14 / 18 / 22 / 27 / 30 / 32. Fonts load privately for the process. All controls keep keyboard focus and the existing save, undo, candidate and MIDI behavior.
+Type. Bahnschrift (the DIN-style face shipped with Windows) for every label; Cascadia
+Mono for the OLED readout. Labels stay in the sentence case the app already uses, so
+nothing that screen readers, tests or the status line quote is rewritten.
 
-Layout: persistent sound library on the left; two large mode buttons across the workspace; 4Ã—4 physical pad grid and waveform beside the selected-sound inspector; export destination and readiness directly below. The inspector scrolls independently at smaller heights. Batch export has a current-filter scope and a separate all-expansions scope, with preview/missing policy on the same page and global progress/cancel always visible.
+Pads are lit tiles: a radial glow (bright core, darker edge, thin top highlight and
+lower shadow) in the colour of the sound type: kick red-orange, snare amber, clap
+yellow, rim lime, closed hat teal, open hat aqua, cymbal azure, perc blue, bass violet,
+pad orchid, lead pink, chord indigo, vocal coral, FX lime, loops green, NI previews
+lavender, unknown steel. Pad number top-left, type tag top-right, name below, state
+last. Empty pads are unlit; a pad that needs a sound is dim with a red rim; the
+selected pad has a white rim and a stronger glow; a locked pad shows LOCK and a bright
+bar along its lower edge. Colour never carries meaning alone: every state is also text.
 
-Review against brief: use the approved Punk prototype as the visual authority. Native widgets preserve legibility and focus; the paper strips, lavender navigation, Oswald titles and black/acid actions carry the style without rotating interactive controls. The 4×4 pad layout remains the defining object. The installed MIDI-track and program-pad profiles remain independent of visual styling.
+Readout. The kit name and pad status sit in a black OLED-style panel (white mono text)
+in place of the old yellow masthead strip.
+
+Avoid: paper textures, rotated controls, neon on every control, and anything that
+reduces legibility of a sound name.
+
+Fonts: Bahnschrift and Cascadia Mono are system fonts; Oswald and Space Grotesk stay
+bundled for compatibility with earlier resources and the Windows font fallback.
+All controls keep keyboard focus and the existing save, undo, candidate and MIDI behaviour.
+
+Layout is unchanged: persistent sound library on the left; two mode buttons across the
+workspace; the 4x4 pad grid and waveform beside the selected-sound inspector; export
+destination and readiness directly below.
+
+Review against the brief: the pad grid is the defining object and carries the style;
+check native captures at the default size and 1120x800 with real names, missing pads,
+locked pads, selected banks and the batch page.
+
+## Design review: groovebox panel, round 2
+
+Scored against the brief (the pads are the light source) and the reference pad controller, from
+window-only captures at 1380x920 and the 1120x800 minimum, both themes.
+
+| Note | Finding | Resolution |
+|---|---|---|
+| 1 Hierarchy (deal-breaker) | At the minimum size ~270 px of chrome sat above the pads; pads were wide and flat. | Mode tabs 44 to 36 px, tighter header and tab margins, the two grey status lines folded into the readout; pad gutters 8 to 12 px. Pads are 80+ px tall at the default size. |
+| 2 Pastel wash (deal-breaker) | The legibility pass bleached colours: saturation 0.09 to 0.27 for pink, orchid, lavender; nearest pair 15 RGB apart. | Legibility now works in HSV (value first, saturation kept) with a brighter tile edge; deep hues stay deep with light ink. Saturation 0.42 to 0.76; nearest pair 31 apart. Tests hold both. |
+| 3 Second accent | A violet mode tab competed with the pad colours. | The active tab uses the one lit-key colour (teal). |
+| 4 Readout | Kit name only, plus two grey status lines. | Second line follows the selected pad: "A05 . Kick Samidare 2" and "edited". |
+| 5 Gutters | 8 px, tiles blurred together. | 12 px. |
+| 6 Disabled keys | Dark-teal disabled text landed on a grey face and vanished. | Disabled text follows the face the key is wearing (lit or soft), checked in both themes. |
+| Found in review | Lock pad and Swap unlocked were the last inspector row and fell off-screen at 1120x800. | Moved under Hear pad / Compare original. Test: reachable without scrolling at the minimum size. |
+| Found in review | Compact captions cut after the first word ("Shaker..."). | Whole name if it fits, otherwise cut at the pad width. |
+
+Known gaps (accepted): keys are flat (CustomTkinter has no bevel or highlight; the reference
+has both), the plate has no gradient, and unlit DrumSynth pads are dim by design.
+
+## Make kits tab
+
+The first and default tab. One purpose: review ready-made drum kits fast. Eight lit pads in the MPC1000 layout
+(pad 1 bottom-left, top row pads 5-8), the kit name and source in the OLED readout, five large keys under the pads
+(Hear beat, Keep, Skip, Swap hit, Undo) and a side panel naming the selected hit and the current program's progress.
+The editor's library rail and file keys are hidden here. Keys: Space/Return hear, Y keep, N skip, 1-8 pick a pad,
+R swap, U undo; ignored while typing. Workers never touch Tk: results arrive through a queue polled every 60 ms.
 
 ## Interaction contract
 

@@ -44,7 +44,7 @@ class StudioWorkflow:
         self._saved_drafts = {key: value for key, value in names.items() if isinstance(key, str) and isinstance(value, str)} if isinstance(names, dict) else {}
         self._recover_id = self._studio_state.get('current')
         super().__init__()
-        self.title('NI to SP & MPC 0.16 · Kit workshop')
+        self.title('NI-kit-sieve')
         if not self._recover_id and (self.data_dir / 'last-edited-kit.json').is_file():
             try:
                 previous = open_kit(self.data_dir / 'last-edited-kit.json')
@@ -378,7 +378,7 @@ class StudioWorkflow:
 
     def preview_bank_ready(self):
         if self.midi_controller and hasattr(self.midi_controller, 'set_mpc_bank'):
-            self.midi_controller.set_mpc_bank(self.group.get('active_bank', 0))
+            self.midi_controller.set_mpc_bank((self.group or {}).get('active_bank', 0))
         pending = self._pending_hit
         if pending and self.live_signature == pending[1] == self.live_bank_signature():
             self._pending_hit = None
@@ -400,7 +400,9 @@ class StudioWorkflow:
             return
         token = self._pad_flash_tokens.get(index, 0) + 1
         self._pad_flash_tokens[index] = token
-        self.pad_buttons[index].configure(border_width=3, border_color=T.FOCUS, fg_color=T.SELECTED)
+        self.pad_buttons[index].flash()
+        if self.tabs.get() == 'Make kits' and index in self.km_ui.pads:
+            self.km_ui.pads[index].flash()         # the hardware pad lights the matching pad on this tab
         def finish():
             if not self._closed and self._pad_flash_tokens.get(index) == token:
                 self.show_group()
@@ -558,6 +560,180 @@ class StudioWorkflow:
             self._remember()
             self._apply(group)
             self.set_status(f'{len(paths)} sounds added. Existing sounds stayed in their pad positions.')
+        self.submit(work, done, failed=lambda exc: self.set_status('No pads changed: ' + str(exc)))
+
+    def auto_fill_pads(self):
+        """Fill unresolved and DrumSynth pads with sounds of the same type."""
+        if self.busy or not self.group:
+            return
+        from . import autofill
+        slots = autofill.fillable_pads(self.group)
+        if not slots:
+            self.set_status('No unresolved pads to fill. Use Next sound to change a pad.')
+            return
+        snapshot = copy.deepcopy(self.group)
+        self._autofill_seed = getattr(self, '_autofill_seed', 0) + 1
+        seed, cancel = self._autofill_seed, self.cancel
+        sounds = autofill.SoundIndex(self.data_dir / 'sound-features.sqlite')
+        def work():
+            plan, skipped = autofill.auto_fill(snapshot, sounds, seed=seed, cancel=cancel,
+                progress=self.notify)
+            return snapshot, plan, skipped
+        def done(result):
+            group, plan, skipped = result
+            if plan:
+                self._remember()
+                self._apply(group)
+            left = f' {len(skipped)} still need a sound.' if skipped else ''
+            self.set_status(f"{len(plan)} {'pad' if len(plan) == 1 else 'pads'} filled with matching sounds. Undo restores the kit.{left}" if plan
+                            else 'Nothing could be filled: ' + (skipped[0]['reason'] if skipped else 'no match'))
+        self.submit(work, done, failed=lambda exc: self.set_status('No pads changed: ' + str(exc)))
+
+    # --- right-click menu, pad locks, swap ---------------------------------
+
+    def _pad_under(self, widget):
+        """Pad index for any widget inside a pad button (canvas, caption label, ...)."""
+        while widget is not None and not isinstance(widget, str):
+            for index, button in self.pad_buttons.items():
+                if widget is button or widget is getattr(button, '_canvas', None) or widget is getattr(button, '_text_label', None):
+                    return index
+            widget = getattr(widget, 'master', None)
+        return None
+
+    def on_right_click(self, event):
+        index = self._pad_under(event.widget)
+        if index is not None:
+            self.pad_menu(event, index)
+
+    def pad_menu(self, event, index):
+        if not self.group:
+            return
+        import tkinter as tk
+        self.selected_pad = index
+        self.show_group()
+        edit = 'disabled' if self.busy else 'normal'
+        menu = getattr(self, '_context_menu', None)
+        if menu is None:
+            menu = self._context_menu = tk.Menu(self, tearoff=False)
+        menu.delete(0, 'end')
+        locked = bool(self.group['pads'][index].get('locked'))
+        menu.add_command(label='Unlock pad' if locked else 'Lock pad', command=lambda: self.toggle_lock(index), state=edit)
+        menu.add_command(label='Swap all unlocked pads', command=self.swap_unlocked, state=edit)
+        menu.add_command(label='Lock all pads', command=lambda: self.set_all_locks(True), state=edit)
+        menu.add_command(label='Unlock all pads', command=lambda: self.set_all_locks(False), state=edit)
+        menu.add_separator()
+        menu.add_command(label='Choose sample…', command=lambda: self.replace_pad(index), state=edit)
+        for mode, label in enumerate(MODES):
+            menu.add_command(label='Random: ' + label, command=lambda m=mode: self.random_pad(m), state=edit)
+        menu.add_separator()
+        menu.add_command(label='Learn MIDI note for this pad', command=lambda: self.learn_pad(index), state=edit)
+        menu.add_command(label='Clear pad', command=lambda: self.clear_pad(index), state=edit)
+        menu.add_command(label='Undo last edit', command=self.undo_edit, state=edit)
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
+
+    def _typing(self, event):
+        widget = event.widget
+        name = widget.winfo_class() if hasattr(widget, 'winfo_class') else ''
+        return name in ('Entry', 'TEntry', 'Text', 'Spinbox', 'TCombobox') or bool(event.state & 0x20004)
+
+    def key_swap(self, event):
+        if self.tabs.get() != 'Play & export':
+            return self.km_key(event)              # on Make kits the digits pick a pad
+        if not self._typing(event):
+            self.swap_unlocked()
+            return 'break'
+
+    def key_lock(self, event):
+        if self.tabs.get() != 'Play & export':
+            return self.km_key(event)
+        if not self._typing(event):
+            self.toggle_lock()
+            return 'break'
+
+    def toggle_lock(self, index=None):
+        if not self.group:
+            return
+        if self.busy:
+            self.set_status('Wait for the current job to finish, then lock the pad.')
+            return
+        index = self.selected_pad if index is None else index
+        group = copy.deepcopy(self.group)
+        pad = group['pads'][index]
+        if pad.get('locked'):
+            pad.pop('locked')
+        else:
+            pad['locked'] = True
+        self._remember()
+        self.selected_pad = index
+        self._apply(group)
+        self.set_status(f"Pad {index + 1:02d} {'locked' if pad.get('locked') else 'unlocked'}. "
+                        'Swap unlocked and Auto-fill leave locked pads alone.')
+
+    def set_all_locks(self, locked):
+        if not self.group or self.busy:
+            return
+        group = copy.deepcopy(self.group)
+        for pad in group['pads']:
+            if locked:
+                pad['locked'] = True
+            else:
+                pad.pop('locked', None)
+        self._remember()
+        self._apply(group)
+        self.set_status('All pads in this bank locked.' if locked else 'All pads in this bank unlocked.')
+
+    def swap_unlocked(self):
+        """Give every unlocked pad another sound of its own type, matched to the locked pads.
+
+        Acts on the pads shown: on the MPC1000 that is the current bank only.
+        """
+        if self.busy or not self.group:
+            return
+        from . import autofill
+        group = self.group
+        slots = autofill.swappable_pads(group)
+        locked = [i for i, pad in enumerate(group['pads']) if pad.get('locked')]
+        where = f"bank {'ABCD'[group.get('active_bank', 0)]}" if 'banks' in group and self.target_var.get() == 'MPC1000' else 'this kit'
+        if not slots:
+            if len(locked) == len(group['pads']):
+                reason = 'every pad is locked'
+            elif locked:
+                reason = 'the unlocked pads are not drum sounds the app can recognise (chords, bass, instruments)'
+            else:
+                reason = 'no pad here is a drum sound the app can recognise (chords, bass and instruments are left alone)'
+            self.set_status('Nothing to swap in ' + where + ': ' + reason + '.')
+            return
+        snapshot = copy.deepcopy(group)
+        self._swap_seed = getattr(self, '_swap_seed', 0) + 1
+        seen = getattr(self, '_swap_seen', None)
+        if seen is None:
+            seen = self._swap_seen = {}
+        key = (group.get('program_id') or group['kit']['id'], group.get('active_bank', 0))
+        avoid, seed, cancel = set(seen.get(key, ())), self._swap_seed, self.cancel
+        sounds = autofill.SoundIndex(self.data_dir / 'sound-features.sqlite')
+        def work():
+            plan, skipped = autofill.auto_fill(snapshot, sounds, seed=seed, cancel=cancel, progress=self.notify,
+                pads=slots, anchor_pads=locked or None, avoid=avoid, method='swap')
+            return snapshot, plan, skipped
+        def done(result):
+            group, plan, skipped = result
+            if plan:
+                seen.setdefault(key, set()).update(item['path'] for item in plan)
+                self._remember()
+                self._apply(group)
+            kept = f' {len(locked)} locked kept.' if locked else ''
+            unswappable = [i for i, pad in enumerate(group['pads']) if not pad.get('locked') and i not in slots]
+            if unswappable:
+                kept += f" {len(unswappable)} {'pad has' if len(unswappable) == 1 else 'pads have'} no sound to base a swap on."
+            left = ''
+            if skipped:
+                why = sorted({item['reason'] for item in skipped})
+                left = f" {len(skipped)} left as they were ({why[0]}{'…' if len(why) > 1 else ''})."
+            self.set_status(f"Swapped {len(plan)} {'pad' if len(plan) == 1 else 'pads'} in {where}.{kept}{left} Press 1 for another take; Undo goes back."
+                            if plan else 'Nothing could be swapped: ' + (skipped[0]['reason'] if skipped else 'no match'))
         self.submit(work, done, failed=lambda exc: self.set_status('No pads changed: ' + str(exc)))
 
     def save_document(self):
